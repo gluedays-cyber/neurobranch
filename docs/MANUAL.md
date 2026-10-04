@@ -32,6 +32,8 @@ This guide provides pure Go engineers with a deep-dive technical manual and hand
    - [Native Language Branching: `Select`, `If`, `Is`, `Match`, `Assert`](#315-native-language-branching-select-if-is-match-assert)
    - [Declarative Fluent DSL: `Switch`, `Case`, `Confirm`, `Auto`, `Default`, `Evaluate`](#316-declarative-fluent-dsl-switch-case-confirm-auto-default-evaluate)
    - [In-Process One-Shot Training & Dynamic Updates: `TrainAIFromMap`, `AppendDataMap`](#317-in-process-one-shot-training--dynamic-updates-trainaifrommap-appenddatamap)
+   - [Domain Manifold Self-Calibration: `CalibrateDomainDistribution`](#318-domain-manifold-self-calibration-calibratedomaindistribution)
+   - [Official Companion Demo: `neurobranch-demo`](#319-official-companion-demo-neurobranch-demo)
 4. [End-to-End Production Tutorial](#4-end-to-end-production-tutorial)
    - [Step 1: AI Design — Structuring Domain Knowledge (`dataset.csv`)](#step-1-ai-design--structuring-domain-knowledge-datasetcsv)
    - [Step 2: Building Your Own AI — Training & Model Generation (`ib-train`)](#step-2-building-your-own-ai--training--model-generation-ib-train)
@@ -738,6 +740,37 @@ if err != nil {
 }
 // Newly appended "Billing" intent is now immediately routable without server restart!
 ```
+
+---
+
+### 3.18. Domain Manifold Self-Calibration: `CalibrateDomainDistribution`
+
+NeuroBranch Format v3 features self-calibrating statistical boundaries. By computing distribution variance across training embeddings, it derives optimal cutoff hyperparameters without manual guesswork:
+
+```go
+// Calibrate active router using training samples with confidence multiplier k=1.5
+router.CalibrateDomainDistribution(samples, 1.5)
+```
+
+#### Derived Calibrated Hyperparameters:
+1. **Adaptive Free Energy Boundary ($	ext{MinLogSumExp}$)**:
+   $$	ext{Free Energy } E = 	ext{LogSumExp}(z) = \log \sum_{i=1}^C e^{z_i}$$
+   Measures in-distribution statistical thermodynamic density. In-distribution sentences produce high positive energy, whereas arbitrary unlearned word sequences yield low energy values. The engine computes $\mu_E - k\cdot\sigma_E$, clamped to $80\%$ of the minimum observed training energy.
+2. **Adaptive Raw Logit Margin ($	ext{RawLogitMargin}$)**:
+   Evaluates pairwise L2 distance between all class manifold centroids. Narrow inter-class separation automatically tightens the logit margin requirement ($z_{	ext{top1}} - z_{	ext{top2}} \ge 	ext{margin}$) to prevent false crossings on overlapping vocabularies.
+3. **Adaptive Cosine Manifold Center ($	ext{MinCosine}$)**:
+   Computes the global domain centroid $\mathbf{c} = rac{1}{N} \sum_i rac{\mathbf{e}_i}{\|\mathbf{e}_i\|_2}$ and establishes a $k$-sigma cutoff radius ($\mu_{\cos} - k\cdot\sigma_{\cos}$).
+
+When saving models via `SaveBinaryModel`, these parameters are serialized into the Little-Endian Format v3 header (`0x0003`), automatically restored by `NewRouter` or `OpenOrTrain` for zero-configuration portability.
+
+---
+
+### 3.19. Official Companion Demo: `neurobranch-demo`
+
+For a complete, turnkey reference implementation, explore **[github.com/gluedays-cyber/neurobranch-demo](https://github.com/gluedays-cyber/neurobranch-demo)**:
+- **`data/train.csv`**: 30-sample curated dataset covering `Refund`, `Delivery`, `Account`, and `Billing`.
+- **`main.go`**: Live 7-step benchmark execution suite demonstrating BPE training, native control flow (`switch`/`if`), comma-ok idioms, fluent DSL with HITL interactive confirmations, multi-metric inspection, and atomic hot-swapping.
+- **`main_test.go`**: Deterministic test suite verifying microsecond routing integrity.
 
 ---
 

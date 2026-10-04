@@ -59,11 +59,19 @@ func Open(modelPath string, defaultThreshold ...float64) (*Router, error) {
 
 // OpenOrTrain ensures the binary model is trained from csvPath if missing,
 // then loads it directly into an active in-memory Router for intelligent branching.
+// It also attaches the training dataset to enable live AppendData/AppendDataMap retraining.
 func OpenOrTrain(csvPath string, modelPath string, defaultThreshold ...float64) (*Router, error) {
 	if err := EnsureModel(csvPath, modelPath); err != nil {
 		return nil, fmt.Errorf("failed to ensure model: %w", err)
 	}
-	return Open(modelPath, defaultThreshold...)
+	router, err := Open(modelPath, defaultThreshold...)
+	if err != nil {
+		return nil, err
+	}
+	if samples, err := LoadCSVDataset(csvPath); err == nil {
+		router.samples = samples
+	}
+	return router, nil
 }
 
 // TrainInMemory executes the complete training pipeline entirely in memory without writing any files to disk,

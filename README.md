@@ -150,6 +150,25 @@ go get github.com/gluedays-cyber/neurobranch
 
 ---
 
+## Official Interactive Demo: `neurobranch-demo`
+
+A ready-to-run reference implementation and benchmark suite is maintained at **[github.com/gluedays-cyber/neurobranch-demo](https://github.com/gluedays-cyber/neurobranch-demo)**.
+
+```bash
+# Clone and run the complete 7-step lifecycle demo in seconds
+git clone https://github.com/gluedays-cyber/neurobranch-demo.git
+cd neurobranch-demo
+go test -v ./...
+go run main.go
+```
+
+The demo includes:
+- **`data/train.csv`**: Production-ready labeled domain knowledge dataset (Refund, Delivery, Account, Billing).
+- **`main.go`**: End-to-end 7-step benchmark demonstrating `ai.Select`, `ai.If`, `ai.Match`, `ai.Switch` DSL, multi-metric `ai.Inspect`, and zero-downtime atomic hot-swapping.
+- **`main_test.go`**: Deterministic unit test suite verifying zero false-positive routing and noise isolation.
+
+---
+
 ## 3-Step Lifecycle
 
 ### Step 1: AI Design — Prepare Your Domain Knowledge (`train.csv`)
