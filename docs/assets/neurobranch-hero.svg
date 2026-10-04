@@ -1,0 +1,324 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 380" width="100%" height="100%">
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0e17"/>
+      <stop offset="45%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#050811"/>
+    </linearGradient>
+
+    <!-- Speed Lightning Gradients -->
+    <linearGradient id="cyanNeon" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0"/>
+      <stop offset="50%" stop-color="#00f5ff" stop-opacity="0.8"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="plasmaGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#818cf8" stop-opacity="0"/>
+      <stop offset="30%" stop-color="#a855f7" stop-opacity="0.6"/>
+      <stop offset="70%" stop-color="#00f5ff" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="1"/>
+    </linearGradient>
+
+    <linearGradient id="bikeBody" x1="0%" y1="0%" x2="100%" y2="50%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="50%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0284c7"/>
+    </linearGradient>
+
+    <linearGradient id="wheelGlow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f5ff"/>
+      <stop offset="50%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+
+    <!-- Retro Rust & Smoke Gradients -->
+    <linearGradient id="rustBike" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#78350f"/>
+      <stop offset="50%" stop-color="#b45309"/>
+      <stop offset="100%" stop-color="#451a03"/>
+    </linearGradient>
+
+    <radialGradient id="smokeCloud" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ef4444" stop-opacity="0.4"/>
+      <stop offset="50%" stop-color="#7f1d1d" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#0f172a" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="cyberGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#00f5ff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#00f5ff" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Filters for Glow & Shadows -->
+    <filter id="neonBlur" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="960" height="380" rx="16" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle Grid Lines (Cyber Road) -->
+  <g opacity="0.12" stroke="#38bdf8" stroke-width="1">
+    <line x1="0" y1="290" x2="960" y2="290"/>
+    <line x1="0" y1="320" x2="960" y2="320"/>
+    <line x1="0" y1="355" x2="960" y2="355"/>
+    <line x1="0" y1="375" x2="960" y2="375"/>
+    <!-- Perspective road diagonals -->
+    <line x1="120" y1="290" x2="40" y2="380"/>
+    <line x1="260" y1="290" x2="200" y2="380"/>
+    <line x1="420" y1="290" x2="380" y2="380"/>
+    <line x1="580" y1="290" x2="560" y2="380"/>
+    <line x1="740" y1="290" x2="740" y2="380"/>
+    <line x1="880" y1="290" x2="900" y2="380"/>
+  </g>
+
+  <!-- Speed Dust & Sparks on Road -->
+  <circle cx="210" cy="305" r="2.5" fill="#f59e0b" opacity="0.6"/>
+  <circle cx="180" cy="318" r="1.5" fill="#ef4444" opacity="0.7"/>
+  <circle cx="240" cy="310" r="2" fill="#d97706" opacity="0.5"/>
+  <circle cx="680" cy="325" r="2" fill="#00f5ff" opacity="0.8"/>
+  <circle cx="820" cy="330" r="3" fill="#a855f7" opacity="0.9"/>
+  <circle cx="610" cy="315" r="2.5" fill="#38bdf8" opacity="0.7"/>
+
+  <!-- ========================================================================= -->
+  <!-- LEFT SIDE: RETRO BRANCHING COLLAPSE (Rusty Bicycle, 100% CPU Exhaustion) -->
+  <!-- ========================================================================= -->
+  <g transform="translate(40, 20)">
+    <!-- Overheat Smoke & Hazard Aura -->
+    <ellipse cx="140" cy="220" rx="90" ry="60" fill="url(#smokeCloud)"/>
+    <ellipse cx="190" cy="210" rx="60" ry="40" fill="url(#smokeCloud)"/>
+
+    <!-- Exhaustion / Strain Sweat Drops -->
+    <path d="M 88 120 C 86 115 82 125 88 128 C 92 125 90 115 88 120 Z" fill="#38bdf8" opacity="0.9"/>
+    <path d="M 152 110 C 150 105 146 115 152 118 C 156 115 154 105 152 110 Z" fill="#38bdf8" opacity="0.9"/>
+    <path d="M 160 135 C 158 130 154 140 160 143 C 164 140 162 130 160 135 Z" fill="#38bdf8" opacity="0.8"/>
+
+    <!-- Broken Fragile Bicycle Frame -->
+    <!-- Rear Wheel -->
+    <circle cx="65" cy="255" r="42" fill="none" stroke="#78350f" stroke-width="4.5" stroke-dasharray="8, 4"/>
+    <circle cx="65" cy="255" r="5" fill="#451a03"/>
+    <line x1="65" y1="213" x2="65" y2="297" stroke="#92400e" stroke-width="1.5"/>
+    <line x1="23" y1="255" x2="107" y2="255" stroke="#92400e" stroke-width="1.5"/>
+    <line x1="35" y1="225" x2="95" y2="285" stroke="#92400e" stroke-width="1.5"/>
+
+    <!-- Front Wheel (Flat & Wobbling) -->
+    <ellipse cx="205" cy="260" rx="38" ry="44" fill="none" stroke="#78350f" stroke-width="4" stroke-dasharray="5, 3" transform="rotate(-8 205 260)"/>
+    <circle cx="205" cy="260" r="5" fill="#451a03"/>
+    <line x1="205" y1="216" x2="205" y2="304" stroke="#92400e" stroke-width="1.5"/>
+    <line x1="167" y1="260" x2="243" y2="260" stroke="#92400e" stroke-width="1.5"/>
+
+    <!-- Rusty Tubes -->
+    <polyline points="65,255 125,255 175,195 115,195 65,255" fill="none" stroke="url(#rustBike)" stroke-width="5" stroke-linecap="round"/>
+    <line x1="125" y1="255" x2="115" y2="180" stroke="url(#rustBike)" stroke-width="5" stroke-linecap="round"/>
+    <line x1="175" y1="195" x2="195" y2="258" stroke="url(#rustBike)" stroke-width="4.5" stroke-linecap="round"/>
+    <line x1="175" y1="195" x2="165" y2="165" stroke="url(#rustBike)" stroke-width="4" stroke-linecap="round"/>
+    <!-- Handlebar & Drooping Bell -->
+    <path d="M 155 165 L 180 162 L 190 175" fill="none" stroke="#57534e" stroke-width="4" stroke-linecap="round"/>
+
+    <!-- Drooping Chain & Sprocket -->
+    <circle cx="125" cy="255" r="12" fill="none" stroke="#451a03" stroke-width="3"/>
+    <path d="M 65 255 Q 95 270 125 255 Q 95 248 65 255" fill="none" stroke="#292524" stroke-width="2.5" stroke-dasharray="4,2"/>
+
+    <!-- Strained / Suffering Runner/Cyclist Character -->
+    <!-- Torso bent over in agony -->
+    <path d="M 112 185 Q 125 155 142 152 Q 155 155 160 175 Q 140 185 112 185 Z" fill="#e11d48"/>
+    <!-- Hunched Back & Neck -->
+    <circle cx="140" cy="125" r="18" fill="#fbcfe8"/>
+    <!-- Sweating / Panting Face -->
+    <path d="M 148 128 Q 153 133 147 137 Z" fill="#9f1239"/> <!-- Gasping Mouth -->
+    <ellipse cx="146" cy="120" rx="2.5" ry="3" fill="#881337"/> <!-- Exhausted squinting eye -->
+    <line x1="140" y1="116" x2="150" y2="120" stroke="#881337" stroke-width="1.8"/> <!-- Furrowed brow -->
+    <!-- Panting Tongue -->
+    <path d="M 148 132 Q 156 135 153 141 Q 147 138 148 132 Z" fill="#f43f5e"/>
+
+    <!-- Heavy Legs Pumping in Misery -->
+    <polyline points="120,185 105,215 118,245" fill="none" stroke="#be123c" stroke-width="7" stroke-linecap="round"/>
+    <polyline points="120,185 138,205 130,235" fill="none" stroke="#9f1239" stroke-width="6" stroke-linecap="round"/>
+
+    <!-- Exhaustion Tags & Badges Attached to Bike -->
+    <!-- Badge 1: if / else collision -->
+    <g transform="translate(18, 140)">
+      <rect width="84" height="22" rx="4" fill="#7f1d1d" stroke="#ef4444" stroke-width="1.2"/>
+      <text x="42" y="15" fill="#fecaca" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">if / else / switch</text>
+    </g>
+    <!-- Badge 2: ReDoS Fragility -->
+    <g transform="translate(5, 172)">
+      <rect width="94" height="22" rx="4" fill="#451a03" stroke="#f59e0b" stroke-width="1.2"/>
+      <text x="47" y="15" fill="#fed7aa" font-family="monospace" font-size="11" font-weight="bold" text-anchor="middle">Regex ReDoS 💥</text>
+    </g>
+    <!-- Badge 3: 100% CPU Saturation -->
+    <g transform="translate(25, 204)">
+      <rect width="82" height="20" rx="4" fill="#262626" stroke="#a8a29e" stroke-width="1.2"/>
+      <text x="41" y="14" fill="#fca5a5" font-family="monospace" font-size="10" font-weight="bold" text-anchor="middle">100% CPU 1500ms</text>
+    </g>
+    <!-- Warning Speech Balloon -->
+    <g transform="translate(155, 75)">
+      <rect width="102" height="28" rx="6" fill="#18181b" stroke="#ef4444" stroke-width="1.5"/>
+      <polygon points="175,103 182,103 170,113" fill="#18181b"/>
+      <text x="51" y="18" fill="#f87171" font-family="system-ui, sans-serif" font-size="10" font-weight="800" text-anchor="middle">⚠️ SQUEAK! GC PAUSE</text>
+    </g>
+    
+    <!-- Section Title Subtext -->
+    <text x="130" y="325" fill="#f87171" font-family="system-ui, sans-serif" font-size="13" font-weight="800" text-anchor="middle" letter-spacing="1">
+      RETRO BRANCHING
+    </text>
+    <text x="130" y="342" fill="#a1a1aa" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">
+      Fragile Regex • Collapses Under Real-World Noise
+    </text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- CENTER DIVIDER: VS PULSE & BREAKAWAY                                      -->
+  <!-- ========================================================================= -->
+  <g transform="translate(365, 100)">
+    <!-- Vertical Glow Slash -->
+    <line x1="30" y1="40" x2="0" y2="240" stroke="#334155" stroke-width="2" stroke-dasharray="6,4"/>
+    <circle cx="15" cy="140" r="22" fill="#0f172a" stroke="#00f5ff" stroke-width="2" filter="url(#softGlow)"/>
+    <text x="15" y="146" fill="#00f5ff" font-family="system-ui, sans-serif" font-size="14" font-weight="900" text-anchor="middle">VS</text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- RIGHT SIDE: NEUROGATE ELECTRIC HYPER-BIKE (30 μs Pure Go Hyperdrive)       -->
+  <!-- ========================================================================= -->
+  <g transform="translate(420, 20)">
+    <!-- Turbo Electric Jet Streams (Plasma Exhaust) -->
+    <path d="M 40 230 C -20 235 -80 210 -150 215" fill="none" stroke="url(#plasmaGrad)" stroke-width="14" filter="url(#neonBlur)" stroke-linecap="round"/>
+    <path d="M 40 242 C -30 250 -100 235 -180 240" fill="none" stroke="url(#plasmaGrad)" stroke-width="8" filter="url(#neonBlur)" stroke-linecap="round"/>
+    <path d="M 50 220 C 0 215 -50 190 -120 185" fill="none" stroke="#00f5ff" stroke-width="3" filter="url(#softGlow)"/>
+    <path d="M 55 250 C 10 265 -40 260 -110 270" fill="none" stroke="#a855f7" stroke-width="3" filter="url(#softGlow)"/>
+
+    <!-- High-Voltage Electric Arcs / Lightning -->
+    <polyline points="-60,195 -45,205 -50,212 -35,225" fill="none" stroke="#ffffff" stroke-width="2" filter="url(#softGlow)"/>
+    <polyline points="-110,230 -90,240 -98,248 -75,255" fill="none" stroke="#00f5ff" stroke-width="2" filter="url(#softGlow)"/>
+
+    <!-- Rear Hyper-Wheel with Photon Ring Glow -->
+    <ellipse cx="120" cy="245" rx="55" ry="55" fill="none" stroke="url(#wheelGlow)" stroke-width="8" filter="url(#neonBlur)"/>
+    <circle cx="120" cy="245" r="48" fill="#0b0f19" stroke="#00f5ff" stroke-width="3"/>
+    <circle cx="120" cy="245" r="26" fill="#0f172a" stroke="#a855f7" stroke-width="4"/>
+    <!-- Photon Spin Blades -->
+    <line x1="120" y1="197" x2="120" y2="293" stroke="#00f5ff" stroke-width="3.5" filter="url(#softGlow)"/>
+    <line x1="72" y1="245" x2="168" y2="245" stroke="#00f5ff" stroke-width="3.5" filter="url(#softGlow)"/>
+    <line x1="86" y1="211" x2="154" y2="279" stroke="#38bdf8" stroke-width="2"/>
+    <line x1="86" y1="279" x2="154" y2="211" stroke="#38bdf8" stroke-width="2"/>
+
+    <!-- Front Futuristic Hubless Wheel -->
+    <ellipse cx="380" cy="245" rx="55" ry="55" fill="none" stroke="url(#wheelGlow)" stroke-width="8" filter="url(#neonBlur)"/>
+    <circle cx="380" cy="245" r="48" fill="#0b0f19" stroke="#00f5ff" stroke-width="3"/>
+    <circle cx="380" cy="245" r="32" fill="#030712" stroke="#38bdf8" stroke-width="4"/>
+    <!-- Wheel Core Neon Ring -->
+    <circle cx="380" cy="245" r="18" fill="none" stroke="#a855f7" stroke-width="3" filter="url(#softGlow)"/>
+    <line x1="380" y1="197" x2="380" y2="293" stroke="#00f5ff" stroke-width="3.5" filter="url(#softGlow)"/>
+    <line x1="332" y1="245" x2="428" y2="245" stroke="#00f5ff" stroke-width="3.5" filter="url(#softGlow)"/>
+
+    <!-- Aerodynamic Cyber Superbike Chassis -->
+    <!-- Lower Battery & Motor Casing (Pure Go Core) -->
+    <path d="M 120 245 L 210 262 L 310 252 L 290 205 L 170 195 Z" fill="#030712" stroke="#00f5ff" stroke-width="2.5"/>
+    <!-- High-Torque Electric Motor Core Badge -->
+    <g transform="translate(195, 215)">
+      <rect width="68" height="28" rx="6" fill="#1e1b4b" stroke="#38bdf8" stroke-width="1.8"/>
+      <text x="34" y="18" fill="#38bdf8" font-family="system-ui, monospace" font-size="11" font-weight="900" text-anchor="middle">0 B/op</text>
+    </g>
+
+    <!-- Sleek Upper Body & Energy Tank Cover -->
+    <path d="M 150 195 Q 230 160 300 170 Q 350 185 365 210 L 335 225 L 285 200 L 165 205 Z" fill="url(#bikeBody)" stroke="#38bdf8" stroke-width="2"/>
+    <!-- Neon Accent Slash on Fairing -->
+    <path d="M 190 192 L 305 180" stroke="#00f5ff" stroke-width="4" filter="url(#softGlow)" stroke-linecap="round"/>
+    <path d="M 235 200 L 320 190" stroke="#a855f7" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Aerodynamic Front Windshield & Cowl -->
+    <path d="M 300 170 L 335 135 L 365 175 L 340 185 Z" fill="#0284c7" opacity="0.75" stroke="#38bdf8" stroke-width="2"/>
+    <!-- High-Intensity Laser Headlight Beams -->
+    <polygon points="365,175 520,130 520,230 365,195" fill="url(#cyanNeon)" opacity="0.35"/>
+    <line x1="365" y1="185" x2="520" y2="185" stroke="#ffffff" stroke-width="2.5" filter="url(#neonBlur)"/>
+    <circle cx="365" cy="185" r="6" fill="#ffffff" filter="url(#softGlow)"/>
+
+    <!-- Low-Slung Clip-on Handlebars -->
+    <path d="M 320 160 L 305 150 L 290 152" fill="none" stroke="#94a3b8" stroke-width="4.5" stroke-linecap="round"/>
+
+    <!-- ======================================================================= -->
+    <!-- COOL GOPHER-CYBER RIDER (Fast, Relaxed, Confident)                     -->
+    <!-- ======================================================================= -->
+    <!-- Rider Cape / Flowing Trenchcoat Catching Speed -->
+    <path d="M 175 135 Q 110 120 40 115 Q 100 145 155 165 Z" fill="url(#plasmaGrad)" opacity="0.85" filter="url(#softGlow)"/>
+    <path d="M 185 140 Q 130 135 70 132 Q 120 155 170 170 Z" fill="#1e1b4b" opacity="0.9"/>
+
+    <!-- Confident Rider Torso & Arms -->
+    <!-- Torso Leaning Forward in Aerodynamic Posture -->
+    <path d="M 180 145 Q 220 120 260 140 L 255 175 Q 215 180 180 170 Z" fill="#0284c7"/>
+    <!-- Racing Suit Harness / Straps -->
+    <line x1="205" y1="130" x2="235" y2="175" stroke="#00f5ff" stroke-width="3"/>
+    <line x1="235" y1="130" x2="205" y2="175" stroke="#00f5ff" stroke-width="3"/>
+
+    <!-- Hands Gripping Handlebars Steadily -->
+    <path d="M 235 140 Q 275 145 305 152" fill="none" stroke="#38bdf8" stroke-width="8" stroke-linecap="round"/>
+    <circle cx="305" cy="152" r="5.5" fill="#0f172a" stroke="#00f5ff" stroke-width="2"/> <!-- Racing Glove -->
+
+    <!-- Sleek Aerodynamic Helmet (Gopher Cyber-Ears Silhouette) -->
+    <ellipse cx="250" cy="105" rx="22" ry="20" fill="#00add8"/> <!-- Gopher Cyan Brand Color -->
+    <!-- Cyber Helmet Visor (Mirror Gold/Neon Cyan) -->
+    <path d="M 252 98 Q 274 102 270 116 Q 252 118 245 110 Z" fill="#0f172a" stroke="#00f5ff" stroke-width="2.2" filter="url(#softGlow)"/>
+    <!-- Visor Glint Reflection -->
+    <path d="M 254 102 Q 266 104 265 110" fill="none" stroke="#ffffff" stroke-width="1.8" stroke-linecap="round"/>
+    <!-- Mini Aerodynamic Gopher Ears on Helmet -->
+    <path d="M 236 90 Q 232 78 240 80 Q 244 88 242 92 Z" fill="#00add8" stroke="#0284c7" stroke-width="1.5"/>
+    <path d="M 248 89 Q 248 76 256 79 Q 256 88 252 92 Z" fill="#00add8" stroke="#0284c7" stroke-width="1.5"/>
+
+    <!-- Rider Legs & Footpegs -->
+    <polyline points="205,170 190,210 160,225" fill="none" stroke="#0369a1" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="160" cy="225" r="5" fill="#0f172a" stroke="#38bdf8" stroke-width="2"/> <!-- Boot -->
+
+    <!-- ======================================================================= -->
+    <!-- FLOATING FEATURE BADGES (Zero Alloc, ~30 μs, Pure Go)                  -->
+    <!-- ======================================================================= -->
+    <!-- Speed Badge: 30 μs Execution -->
+    <g transform="translate(180, 48)">
+      <rect width="112" height="26" rx="6" fill="#042f2e" stroke="#14b8a6" stroke-width="1.8" filter="url(#softGlow)"/>
+      <text x="56" y="17" fill="#2dd4bf" font-family="system-ui, sans-serif" font-size="11" font-weight="900" text-anchor="middle">⚡ LATENCY: ~30 μs</text>
+    </g>
+
+    <!-- Zero Alloc Badge -->
+    <g transform="translate(305, 48)">
+      <rect width="138" height="26" rx="6" fill="#172554" stroke="#3b82f6" stroke-width="1.8" filter="url(#softGlow)"/>
+      <text x="69" y="17" fill="#93c5fd" font-family="system-ui, sans-serif" font-size="11" font-weight="900" text-anchor="middle">🔥 0 B/op (ZERO ALLOC)</text>
+    </g>
+
+    <!-- Self-Created Neural Model Badge -->
+    <g transform="translate(230, 15)">
+      <rect width="168" height="24" rx="6" fill="#3b0764" stroke="#a855f7" stroke-width="1.5"/>
+      <text x="84" y="16" fill="#e9d5ff" font-family="system-ui, sans-serif" font-size="10" font-weight="800" text-anchor="middle">⚡ EMBEDDED PURE GO AI</text>
+    </g>
+
+    <!-- Section Title Subtext -->
+    <text x="250" y="325" fill="#00f5ff" font-family="system-ui, sans-serif" font-size="14" font-weight="900" text-anchor="middle" letter-spacing="1" filter="url(#softGlow)">
+      NEUROGATE HYPER-ENGINE
+    </text>
+    <text x="250" y="342" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="11" text-anchor="middle">
+      Microsecond Latency • Zero Allocations • Positional Aware
+    </text>
+  </g>
+
+  <!-- ========================================================================= -->
+  <!-- BOTTOM BRAND BANNER / TAGLINE                                             -->
+  <!-- ========================================================================= -->
+  <g transform="translate(480, 368)">
+    <line x1="-360" y1="-5" x2="360" y2="-5" stroke="#1e293b" stroke-width="1"/>
+    <text x="0" y="3" fill="#64748b" font-family="system-ui, sans-serif" font-size="10.5" font-weight="600" text-anchor="middle" letter-spacing="0.5">
+      Directly Creates and Runs Its Own Neural AI in Pure Go — Stop Borrowing External Models.
+    </text>
+  </g>
+</svg>

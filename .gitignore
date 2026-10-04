@@ -1,0 +1,24 @@
+# Compiled Binaries & Executables
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+
+# Compiled Model Weights
+weights/*.bin
+
+# Test binaries & coverage
+*.test
+*.out
+coverage.txt
+
+# OS & Editor metadata
+.DS_Store
+.idea/
+.vscode/
+.agents/
+*.swp
+*~
