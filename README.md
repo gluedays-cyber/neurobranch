@@ -1,7 +1,7 @@
 # NeuroBranch
 
 <p align="center">
-  <img src="assets/neurobranch-hero.jpg" width="100%" alt="NeuroBranch vs Retro Branching — Electric Hyperbike vs Rusty Bicycle">
+  <img src="assets/neurobranch.jpg" width="100%" alt="NeuroBranch vs Retro Branching — Electric Hyperbike vs Rusty Bicycle">
 </p>
 <p align="center">
   <strong>Directly Creates and Runs Its Own Neural AI in Pure Go</strong><br>

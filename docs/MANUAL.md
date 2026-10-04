@@ -1,7 +1,7 @@
 # NeuroBranch: Embedded Neural AI Manual & Tutorial for Go Developers
 
 <p align="center">
-  <img src="assets/neurobranch-hero.jpg" width="100%" alt="NeuroBranch vs Retro Branching — Electric Hyperbike vs Rusty Bicycle">
+  <img src="assets/neurobranch.jpg" width="100%" alt="NeuroBranch vs Retro Branching — Electric Hyperbike vs Rusty Bicycle">
 </p>
 
 This guide provides pure Go engineers with a deep-dive technical manual and hands-on tutorial for **NeuroBranch: An Engine That Directly Creates and Runs Its Own Domain Artificial Intelligence**. Stop borrowing external models—learn how to design domain knowledge, generate lightweight neural networks from scratch in seconds, and execute microsecond AI-driven control flow with zero dependencies.
