@@ -94,24 +94,40 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 	}
 
 	primaryLabel := model.Labels[primaryIdx]
-	primaryConf := float64(res.Primary.Confidence)
+	rawPrimaryConf := float64(res.Primary.Confidence)
 	entropy := float64(res.Entropy)
 	energy := float64(res.Energy)
 
 	var secondaryLabel string
-	var secondaryConf float64
+	var rawSecondaryConf float64
 	if res.Total >= 2 {
 		secIdx := int(res.Secondary.Index)
 		if secIdx >= 0 && secIdx < len(model.Labels) {
 			secondaryLabel = model.Labels[secIdx]
-			secondaryConf = float64(res.Secondary.Confidence)
+			rawSecondaryConf = float64(res.Secondary.Confidence)
 		}
 	}
-	margin := primaryConf - secondaryConf
+
+	// Guard 3: Calculate single-character fragment & excessive UNK penalty
+	unkPenalty := 0.0
+	if unkRatio > 0.25 {
+		unkPenalty = (unkRatio - 0.25) * 1.5
+	}
+	singlePenalty := 0.0
+	if singleRatio > 0.5 {
+		singlePenalty = (singleRatio - 0.5) * 2.0
+	}
+	effectivePenalty := math.Max(unkPenalty, singlePenalty)
+	if effectivePenalty > 1.0 {
+		effectivePenalty = 1.0
+	}
+	calibratedConfidence := rawPrimaryConf * (1.0 - effectivePenalty)
+	calibratedSecond := rawSecondaryConf * (1.0 - effectivePenalty)
+	margin := calibratedConfidence - calibratedSecond
 
 	decision := RouteDecision{
 		Intent:              primaryLabel,
-		Confidence:          primaryConf,
+		Confidence:          calibratedConfidence,
 		Entropy:             entropy,
 		Energy:              energy,
 		Margin:              margin,
@@ -121,7 +137,7 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 		UnknownTokenRatio:   unkRatio,
 		UniqueTokenRatio:    uniqueRatio,
 		SecondaryIntent:     secondaryLabel,
-		SecondaryConfidence: secondaryConf,
+		SecondaryConfidence: calibratedSecond,
 	}
 
 	effectiveMinEnergy := r.policy.MinLogSumExp
@@ -144,13 +160,13 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 	}
 
 	// 3. Ambiguity margin boundary (both probability margin, raw logit gap, and co-activation conflict)
-	isAmbiguous := primaryConf < r.policy.HighThreshold || margin < r.policy.MarginCutoff || (effectiveMargin > 0.0 && res.LogitMargin < effectiveMargin) || (res.CoActiveCount >= 2 && effectiveMargin > 0.0 && res.LogitMargin < effectiveMargin*1.5)
+	isAmbiguous := calibratedConfidence < r.policy.HighThreshold || margin < r.policy.MarginCutoff || (effectiveMargin > 0.0 && res.LogitMargin < effectiveMargin) || (res.CoActiveCount >= 2 && effectiveMargin > 0.0 && res.LogitMargin < effectiveMargin*1.5)
 	if isAmbiguous {
 		return decision, ErrAmbiguousIntent
 	}
 
 	// 4. Low confidence boundary
-	if primaryConf < r.policy.LowThreshold {
+	if calibratedConfidence < r.policy.LowThreshold {
 		return decision, ErrLowConfidence
 	}
 
@@ -334,6 +350,21 @@ func (r *Router) SelectCtx(ctx context.Context, text string) string {
 	if err != nil {
 		return ""
 	}
+
+	effectiveMinEnergy := r.policy.MinLogSumExp
+	model := r.model.Load()
+	if effectiveMinEnergy == 0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
+		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
+	}
+
+	// Reinforce safety cutoffs: LogSumExp Free Energy and Shannon entropy
+	if effectiveMinEnergy > 0.0 && decision.Energy < effectiveMinEnergy {
+		return ""
+	}
+	if decision.Entropy > r.policy.MaxEntropy {
+		return ""
+	}
+
 	return decision.Intent
 }
 

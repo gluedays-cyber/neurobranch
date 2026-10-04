@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"encoding/csv"
@@ -491,12 +491,19 @@ func TrainModel(samples []DataSample, cfg TrainConfig) (*InferenceModel, error) 
 		// Check Best Model and Early Stopping
 		isBetter := false
 		if len(samples) < 50 {
-			if trainLoss < bestTrainLoss {
+			// In small datasets, check significant train loss reduction or val loss improvement
+			if trainLoss < bestTrainLoss-1e-4 {
 				bestTrainLoss = trainLoss
 				isBetter = true
 			}
+			// Early convergence stop: When accuracy is 100% and train loss is negligible, stop immediately
+			if trainAcc >= 1.0 && trainLoss < 0.01 && epoch >= 20 {
+				fmt.Printf("[Early Stopping] Converged at epoch %d (Train Loss: %.4f, Val Loss: %.4f)\n", epoch, trainLoss, valLoss)
+				bestWeights = cloneWeights(weights)
+				break
+			}
 		} else {
-			if valLoss < bestValLoss {
+			if valLoss < bestValLoss-1e-4 {
 				bestValLoss = valLoss
 				isBetter = true
 			}
@@ -508,7 +515,7 @@ func TrainModel(samples []DataSample, cfg TrainConfig) (*InferenceModel, error) 
 			bestWeights = cloneWeights(weights)
 		} else {
 			patienceCounter++
-			if patienceCounter >= cfg.Patience && epoch >= 30 {
+			if patienceCounter >= cfg.Patience && epoch >= 20 {
 				fmt.Printf("[Early Stopping] Triggered at epoch %d (Train Loss: %.4f, Val Loss: %.4f)\n", epoch, trainLoss, valLoss)
 				break
 			}
@@ -523,7 +530,11 @@ func TrainModel(samples []DataSample, cfg TrainConfig) (*InferenceModel, error) 
 		bestWeights = weights
 	}
 
-	return NewInferenceModel(header, labels, tokenizer.Vocab, tokenizer.MergeRules, bestWeights), nil
+	model := NewInferenceModel(header, labels, tokenizer.Vocab, tokenizer.MergeRules, bestWeights)
+	if len(samples) > 0 {
+		CalibrateModelDistribution(model, samples, 1.5)
+	}
+	return model, nil
 }
 
 func clearSlice(s []float32) {

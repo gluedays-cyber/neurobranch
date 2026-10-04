@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"math"
@@ -262,3 +262,213 @@ func (g *NeuroBranch) DomainStats() (hasCentroid bool, meanSim float32, stdDev f
 	defer g.mu.RUnlock()
 	return g.hasCentroid, g.domainMeanSim, g.domainStdDev, g.minCosineSim
 }
+
+// CalibrateModelDistribution calculates manifold center, adaptive Free Energy (LogSumExp) threshold,
+// and adaptive logit margin from sample sentences, writing the results into the model header.
+func CalibrateModelDistribution(model *InferenceModel, samples []DataSample, k ...float32) {
+	if model == nil || len(samples) == 0 {
+		return
+	}
+
+	coeff := float32(1.5)
+	if len(k) > 0 && k[0] > 0 {
+		coeff = k[0]
+	}
+
+	embDim := int(model.Header.EmbeddingDim)
+	if embDim > MaxGateEmbDim {
+		embDim = MaxGateEmbDim
+	}
+	numClasses := int(model.Header.NumClasses)
+	if numClasses > MaxGateClasses {
+		numClasses = MaxGateClasses
+	}
+
+	var sum [MaxGateEmbDim]float64
+	validCount := 0
+	var pooled [MaxGateEmbDim]float32
+	var dummyLogits [MaxGateClasses]float32
+
+	for _, s := range samples {
+		tokens := model.Tokenizer.Encode(s.Text)
+		if len(tokens) == 0 {
+			continue
+		}
+		if err := model.PredictFeatures(tokens, pooled[:embDim], dummyLogits[:numClasses]); err == nil {
+			for d := 0; d < embDim; d++ {
+				sum[d] += float64(pooled[d])
+			}
+			validCount++
+		}
+	}
+
+	if validCount == 0 {
+		return
+	}
+
+	inv := 1.0 / float64(validCount)
+	var raw [MaxGateEmbDim]float32
+	for d := 0; d < embDim; d++ {
+		raw[d] = float32(sum[d] * inv)
+	}
+	var centroid [MaxGateEmbDim]float32
+	L2Normalize(raw[:embDim], centroid[:embDim])
+
+	// Pass 2: Calculate distribution variance and std dev of cosine similarities and LogSumExp energies
+	var sumSim, sumSqSim float64
+	var sumEnergy, sumSqEnergy float64
+	evalCount := 0
+	var minObservedEnergy float32 = math.MaxFloat32
+	var normPooled [MaxGateEmbDim]float32
+	for _, s := range samples {
+		tokens := model.Tokenizer.Encode(s.Text)
+		if len(tokens) == 0 {
+			continue
+		}
+		if err := model.PredictFeatures(tokens, pooled[:embDim], dummyLogits[:numClasses]); err == nil {
+			L2Normalize(pooled[:embDim], normPooled[:embDim])
+			sim := DotProduct(normPooled[:embDim], centroid[:embDim])
+			sumSim += float64(sim)
+			sumSqSim += float64(sim * sim)
+
+			energy := LogSumExp(dummyLogits[:numClasses])
+			if energy < minObservedEnergy {
+				minObservedEnergy = energy
+			}
+			sumEnergy += float64(energy)
+			sumSqEnergy += float64(energy * energy)
+			evalCount++
+		}
+	}
+
+	var adaptiveMinCosine float32 = 0.50
+	var adaptiveEnergy float32 = 0.0
+
+	if evalCount > 0 {
+		n := float64(evalCount)
+		mean := float32(sumSim / n)
+		variance := float32((sumSqSim / n) - float64(mean*mean))
+		if variance < 0 {
+			variance = 0
+		}
+		stdDev := float32(math.Sqrt(float64(variance)))
+
+		adaptiveMinCosine = mean - (coeff * stdDev)
+		if adaptiveMinCosine < -1.0 {
+			adaptiveMinCosine = -1.0
+		}
+
+		// Compute adaptive LogSumExp energy boundary
+		meanEnergy := float32(sumEnergy / n)
+		varianceEnergy := float32((sumSqEnergy / n) - float64(meanEnergy*meanEnergy))
+		if varianceEnergy < 0 {
+			varianceEnergy = 0
+		}
+		stdDevEnergy := float32(math.Sqrt(float64(varianceEnergy)))
+		adaptiveEnergy = meanEnergy - (coeff * stdDevEnergy)
+
+		// Clamp with observed in-distribution minimum headroom so valid variations are not prematurely cut off
+		headroom := minObservedEnergy * 0.80
+		if headroom > 0 && adaptiveEnergy > headroom {
+			adaptiveEnergy = headroom
+		}
+		if adaptiveEnergy < 0 {
+			adaptiveEnergy = 0
+		}
+	}
+
+	// Pass 3: Calculate Inter-Class Boundary Distance and Adaptive RawLogitMargin
+	labelToIndex := make(map[string]int, len(model.Labels))
+	for i, lbl := range model.Labels {
+		labelToIndex[lbl] = i
+	}
+
+	classSums := make([][MaxGateEmbDim]float64, numClasses)
+	classCounts := make([]int, numClasses)
+	for _, s := range samples {
+		cIdx, exists := labelToIndex[s.Label]
+		if !exists || cIdx >= numClasses {
+			continue
+		}
+		tokens := model.Tokenizer.Encode(s.Text)
+		if len(tokens) == 0 {
+			continue
+		}
+		if err := model.PredictFeatures(tokens, pooled[:embDim], dummyLogits[:numClasses]); err == nil {
+			for d := 0; d < embDim; d++ {
+				classSums[cIdx][d] += float64(pooled[d])
+			}
+			classCounts[cIdx]++
+		}
+	}
+
+	classCentroids := make([][MaxGateEmbDim]float32, numClasses)
+	for c := 0; c < numClasses; c++ {
+		if classCounts[c] > 0 {
+			invC := 1.0 / float64(classCounts[c])
+			var rawC [MaxGateEmbDim]float32
+			for d := 0; d < embDim; d++ {
+				rawC[d] = float32(classSums[c][d] * invC)
+			}
+			L2Normalize(rawC[:embDim], classCentroids[c][:embDim])
+		}
+	}
+
+	minDist := float32(2.0)
+	validPairs := 0
+	for i := 0; i < numClasses; i++ {
+		if classCounts[i] == 0 {
+			continue
+		}
+		for j := i + 1; j < numClasses; j++ {
+			if classCounts[j] == 0 {
+				continue
+			}
+			sim := DotProduct(classCentroids[i][:embDim], classCentroids[j][:embDim])
+			dist := 1.0 - sim
+			if dist < minDist {
+				minDist = dist
+			}
+			validPairs++
+		}
+	}
+
+	var adaptiveMargin float32 = 0.0
+	if validPairs > 0 {
+		adaptiveMargin = float32(0.50) * (2.0 - minDist)
+		if adaptiveMargin < 0.25 {
+			adaptiveMargin = 0.25
+		}
+		if adaptiveMargin > 1.20 {
+			adaptiveMargin = 1.20
+		}
+	}
+
+	// Persist self-calibration metadata to model Header for zero-configuration portability
+	model.Header.Version = FormatVersion3
+	if adaptiveEnergy > 0 {
+		model.Header.CalibratedMinEnergy = adaptiveEnergy
+	}
+}
+
+// CalibrateDomainDistribution calculates the manifold center, adaptive Free Energy (LogSumExp) threshold,
+// and adaptive logit margin from samples, immediately updating the active router policy and model header.
+func (r *Router) CalibrateDomainDistribution(samples []DataSample, k ...float32) *Router {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	model := r.model.Load()
+	if model == nil || len(samples) == 0 {
+		return r
+	}
+
+	CalibrateModelDistribution(model, samples, k...)
+	if model.Header.CalibratedMinEnergy > 0 {
+		r.policy.MinLogSumExp = float64(model.Header.CalibratedMinEnergy)
+	}
+	if model.Header.CalibratedMargin > 0 {
+		r.policy.RawLogitMargin = model.Header.CalibratedMargin
+	}
+	return r
+}
+

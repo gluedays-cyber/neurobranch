@@ -22,3 +22,8 @@ coverage.txt
 .agents/
 *.swp
 *~
+
+# Ban SVG Generation
+*.svg
+assets/*.svg
+docs/assets/*.svg

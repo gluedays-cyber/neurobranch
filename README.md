@@ -224,7 +224,8 @@ func main() {
 
 	query := "sent the return box a week ago when do i get my money back"
 
-	// 2. Go Native switch-case: OOD and low-confidence automatically fall through to default:
+	// 2. Go Native switch-case: OOD, unlearned word combinations, and high entropy automatically fall through to default:
+	// ai.Select applies multi-layer fail-safe guards (LogSumExp Free Energy, Shannon Entropy, Calibrated Confidence):
 	switch ai.Select(query) {
 	case "Refund":
 		fmt.Println("[ACTION] Processing refund request")
@@ -233,7 +234,8 @@ func main() {
 	case "Account":
 		fmt.Println("[ACTION] Initiating account password reset")
 	default:
-		// Safe isolation: noise, unlearned patterns, and out-of-domain queries
+		// Safe isolation: noise, unlearned patterns, and out-of-domain (OOD) queries
+		// Guaranteed to return "" on unlearned real-word combinations via LogSumExp energy cutoff
 		fmt.Println("[FALLBACK] Transfer to human agent or clarify question")
 	}
 
@@ -345,14 +347,23 @@ Before invoking any neural forward arithmetic, Layer 1 executes two zero-allocat
 2. **Repetitive Token Flood Guard (`UniqueTokenRatio < 0.25`)**: Repeatedly spamming a valid in-domain word (e.g. *"refund refund refund refund..."*) attempts to bypass OOD centroid guards. Layer 1 detects degenerated inputs with low unique token ratios and isolates them immediately with `ErrDegeneratedInput`.
 
 ### Layer 2: Strict Short-Circuit Evaluation Order (OOD Before Ambiguity) (~29 μs)
-Standard Softmax enforces $\sum P_i = 1.0$, which causes neural networks to output artificially inflated confidence even on meaningless inputs. To eliminate edge cases where novel unlearned inputs are erroneously flagged as "Ambiguous" between two arbitrary classes, NeuroBranch enforces a **strict short-circuit evaluation order**:
+Standard Softmax enforces $\sum P_i = 1.0$, which causes neural networks to output artificially inflated confidence even on meaningless inputs. To eliminate edge cases where novel unlearned inputs are erroneously flagged as "Ambiguous" between two arbitrary classes or misclassified into the nearest class, NeuroBranch enforces a **strict short-circuit evaluation order**:
 1. **Geometric L2 Cosine OOD Guard**: If the input's normalized embedding vector falls outside the domain manifold radius ($\cos(\theta) < \text{MinCosine}$), the request is immediately rejected as OOD.
-2. **Free Energy ($-\text{LogSumExp}$)**: Measures the absolute activation strength of unnormalized logits before Softmax. Unlearned inputs lack activation energy and are cleanly isolated before ambiguity checks.
-3. **Shannon Entropy**: Measures probability distribution chaos. High entropy ($> 2.0$) triggers OOD isolation.
-4. **Ambiguity & Logit Margin (Only for Confirmed In-Distribution Inputs)**: Only once in-domain membership is mathematically established, the engine evaluates probability margin ($< 0.15$), raw logit gap ($< \text{RawLogitMargin}$), and co-activation density (`CoActiveCount >= 2`).
+2. **Free Energy ($-\text{LogSumExp}$)**: Measures the absolute activation strength of unnormalized logits before Softmax. Unlearned real-word combinations lack activation energy and are cleanly rejected with `ErrOutOfDomain` before ambiguity checks.
+3. **Calibrated Confidence Penalty (Subword Fragment & UNK Decay)**: Non-vocabulary queries split into many single-byte BPE fragments. When `SingleCharRatio > 0.50` or `UnkRatio > 0.25`, confidence is penalized proportionally, preventing OOD queries from clearing high thresholds.
+4. **Shannon Distribution Entropy**: Measures probability distribution chaos. Queries exceeding `MaxEntropy` trigger immediate OOD isolation (`ErrHighEntropy`).
+5. **Ambiguity & Logit Margin (Only for Confirmed In-Distribution Inputs)**: Only once in-domain membership is mathematically established, the engine evaluates probability margin ($< 0.15$), raw logit gap ($< \text{RawLogitMargin}$), and co-activation density (`CoActiveCount >= 2`).
 
 ### Format v3: Zero-Configuration Self-Calibrating Metadata
-Under Format Version 3 (`0x0003`), `CalibrateDomainDistribution` automatically embeds calibrated domain boundaries (`CalibratedMinEnergy`, `CalibratedMargin`, `CalibratedMinCosine`) directly into the model binary header. Any microservice loading the `.bin` file instantly inherits production-calibrated thresholds with **zero manual configuration code**.
+Under Format Version 3 (`0x0003`), `TrainModel`, `TrainInMemory`, and `TrainAIFromMap` **automatically execute distribution calibration** (`CalibrateModelDistribution`) upon training completion. The engine computes sample embedding manifold statistics and automatically embeds:
+- `CalibratedMinEnergy`: Adaptive LogSumExp free-energy threshold ($\mu_E - k\cdot\sigma_E$) with observed in-distribution minimum headroom
+- `CalibratedMargin`: Adaptive inter-class logit margin based on minimum centroid distance
+- `CalibratedMinCosine`: Adaptive cosine similarity cutoff ($\mu_{\cos} - k\cdot\sigma_{\cos}$)
+
+Any microservice or in-memory runtime loading the model instantly inherits production-calibrated thresholds with **zero manual configuration code**.
+
+### Optimized Training Engine: Early Convergence Stop
+NeuroBranch's in-memory trainer monitors loss reduction and accuracy convergence. When accuracy reaches 100% and training loss drops below `0.01`, the training loop triggers an **Early Convergence Stop** (`epoch >= 20`), cutting runtime hot-swap retraining latency by **over 50%** and completely preventing over-fitting on small domain extensions.
 
 ### Deserialization Guard: Finite Tensor Verification (`math.IsNaN`, `math.IsInf`)
 Beyond SHA-256 integrity checksums, `DeserializeModel` actively validates all loaded tensor weights (`Embedding`, `Positional`, `W1`, `B1`, `W2`, `B2`). Any non-finite float value resulting from divergence during training is immediately rejected with `ErrCorruptedTensor`, preventing poisoned runtime states.

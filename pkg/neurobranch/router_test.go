@@ -530,3 +530,81 @@ func TestAIAlias_SelectBranching(t *testing.T) {
 		t.Errorf("Expected ('order_refund', true), got ('%s', %v)", target, ok)
 	}
 }
+
+func TestAIAlias_OODCutoff(t *testing.T) {
+	ai, err := TrainAIFromMap(map[string][]string{
+		"Refund": {
+			"cancel payment and request refund",
+			"want my money back refund",
+			"reverse transaction charge refund",
+			"issue refund for purchase order",
+			"please process full refund immediately",
+			"sent return parcel need refund",
+			"defective item request refund reimbursement",
+			"credit card transaction chargeback refund",
+		},
+		"Delivery": {
+			"where is my package delivery tracking",
+			"courier delivery shipping tracking status",
+			"update delivery shipping destination address",
+			"package delivery transit shipment delayed",
+			"track courier parcel delivery location",
+			"courier delivery tracking number lookup",
+			"parcel delivery has not arrived yet",
+			"change courier delivery dropoff point",
+		},
+		"Account": {
+			"forgot my account login password",
+			"locked out of user account login",
+			"change account profile email credentials",
+			"two factor account security authentication",
+			"reset user account dashboard password",
+			"account security profile recovery support",
+			"unlock frozen user account profile",
+			"reset credentials for account signin",
+		},
+		"Billing": {
+			"billing credit card monthly receipt",
+			"billing subscription invoice tax receipt",
+			"change billing payment method invoice",
+			"download corporate billing vat invoice",
+			"annual subscription billing payment statement",
+			"update billing invoice payment details",
+		},
+	})
+	if err != nil {
+		t.Fatalf("TrainAIFromMap failed: %v", err)
+	}
+
+	var minE, maxE, sumE float64 = 999.0, -999.0, 0.0
+	for _, s := range ai.samples {
+		st := ai.Inspect(s.Text)
+		if st.Energy < minE {
+			minE = st.Energy
+		}
+		if st.Energy > maxE {
+			maxE = st.Energy
+		}
+		sumE += st.Energy
+	}
+	avgE := sumE / float64(len(ai.samples))
+	t.Logf("In-Domain Energy Stats: Min=%.4f, Max=%.4f, Avg=%.4f, Count=%d", minE, maxE, avgE, len(ai.samples))
+
+	testOODQueries := []string{
+		"hardware device driver crash kernel panic",
+		"quantum physics entangled photon spin",
+		"weather forecast tomorrow in tokyo",
+	}
+
+	for _, oodQuery := range testOODQueries {
+		trace := ai.Inspect(oodQuery)
+		selected := ai.Select(oodQuery)
+		decision, err := ai.RouteQuery(context.Background(), oodQuery)
+		t.Logf("Query: %q -> Select: %q, RouteQuery err: %v, Inspect IsFallback: %v (Reason: %q, Energy: %.4f, MinEnergy: %.4f)",
+			oodQuery, selected, err, trace.IsFallback, trace.FallbackReason, trace.Energy, ai.policy.MinLogSumExp)
+
+		if selected != "" {
+			t.Errorf("Expected empty string (default: fallback) for OOD query %q, got %q (decision: %+v)", oodQuery, selected, decision)
+		}
+	}
+}
