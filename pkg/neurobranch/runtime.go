@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"errors"
@@ -17,7 +17,7 @@ const (
 )
 
 var (
-	ErrModelNotInitialized = errors.New("model not properly initialized")
+	ErrModelNotInitialized  = errors.New("model not properly initialized")
 	ErrClassIndexOutOfRange = errors.New("predicted class index exceeds label count")
 
 	// Fail-Safe Sentinel Errors (Layer 1 & Layer 2)
@@ -284,7 +284,6 @@ func (m *InferenceModel) PredictDetailed(text string) (StaticInferenceResult, fl
 	return res, effectivePenalty, nil
 }
 
-
 // TruncateToRuneBoundary truncates text to at most maxBytes without slicing multi-byte UTF-8 runes.
 func TruncateToRuneBoundary(text string, maxBytes int) string {
 	if len(text) <= maxBytes {
@@ -355,6 +354,3 @@ func (m *InferenceModel) PredictFeatures(tokenIDs []uint32, outPooled []float32,
 	}
 	return nil
 }
-
-
-

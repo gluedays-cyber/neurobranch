@@ -286,4 +286,3 @@ func TestArchitectureFeedback_Case5_CalibrateAdaptiveMargin(t *testing.T) {
 	}
 	t.Logf("Initial Margin: %.4f, Calibrated Margin: %.4f", initialMargin, calibratedMargin)
 }
-

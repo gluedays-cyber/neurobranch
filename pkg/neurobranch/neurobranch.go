@@ -86,6 +86,7 @@ func NewNeuroBranchWithModel(model *InferenceModel) *NeuroBranch {
 	// Apply self-calibrated thresholds from binary header if present
 	if model.Header.CalibratedMinEnergy > 0 {
 		nb.policy.MinLogSumExp = float64(model.Header.CalibratedMinEnergy)
+		nb.policy.EnergyThreshold = float64(model.Header.CalibratedMinEnergy)
 	}
 	if model.Header.CalibratedMargin > 0 {
 		nb.policy.RawLogitMargin = model.Header.CalibratedMargin
@@ -157,6 +158,15 @@ func (g *NeuroBranch) SetSingleCharRatioCutoff(cutoff float64) *NeuroBranch {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.policy.MaxSingleCharRatio = cutoff
+	return g
+}
+
+// SetEnergyThreshold configures the minimum Free Energy (LogSumExp) cutoff for strict OOD rejection.
+func (g *NeuroBranch) SetEnergyThreshold(threshold float64) *NeuroBranch {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.policy.EnergyThreshold = threshold
+	g.policy.MinLogSumExp = threshold
 	return g
 }
 

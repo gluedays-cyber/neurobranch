@@ -34,6 +34,8 @@ This guide provides pure Go engineers with a deep-dive technical manual and hand
    - [In-Process One-Shot Training & Dynamic Updates: `TrainAIFromMap`, `AppendDataMap`](#317-in-process-one-shot-training--dynamic-updates-trainaifrommap-appenddatamap)
    - [Domain Manifold Self-Calibration: `CalibrateDomainDistribution`](#318-domain-manifold-self-calibration-calibratedomaindistribution)
    - [Official Companion Demo: `neurobranch-demo`](#319-official-companion-demo-neurobranch-demo)
+   - [Functional Options & Configuration: `WithEnergyThreshold`, `TrainAIWithOptions`](#320-functional-options--configuration-withenergythreshold-trainaiwithoptions)
+   - [In-Tree Enterprise Showcase & Benchmark Suite: `examples/enterprise_router`](#321-in-tree-enterprise-showcase--benchmark-suite-examplesenterprise_router)
 4. [End-to-End Production Tutorial](#4-end-to-end-production-tutorial)
    - [Step 1: AI Design — Structuring Domain Knowledge (`dataset.csv`)](#step-1-ai-design--structuring-domain-knowledge-datasetcsv)
    - [Step 2: Building Your Own AI — Training & Model Generation (`ib-train`)](#step-2-building-your-own-ai--training--model-generation-ib-train)
@@ -287,7 +289,8 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 | **Layer 1** (Tokenizer) | Repetitive token flood ratio | `UniqueTokenRatio < MinUniqueTokenRatio` (0.25) | `ErrDegeneratedInput` | **< 1 μs** (No forward pass) |
 | **Layer 1** (Tokenizer) | Single-character fragment ratio | `SingleCharRatio >= MaxSingleCharRatio` (0.70) | `ErrUnlearnedVocabulary` | **< 1 μs** (No forward pass) |
 | **Layer 1** (Tokenizer) | UNK token ratio | `UnknownTokenRatio >= MaxUnknownTokenRatio` (0.30) | `ErrUnlearnedVocabulary` | **< 1 μs** (No forward pass) |
-| **Layer 2** (Neural Output) | Free energy ($-\text{LogSumExp}$) | `Energy < MinLogSumExp` (if configured) | `ErrOutOfDomain` | **~29 μs** (MLP forward) |
+| **Layer 1** (Tokenizer) | Subword fragmentation ratio | `tokens/words >= 4.2 && SingleCharRatio >= 0.45` OR `tokens/words >= 5.5` | `ErrUnlearnedVocabulary` | **< 1 μs** (No forward pass) |
+| **Layer 2** (Neural Output) | Free energy ($\text{LogSumExp}$) | `AdjustedEnergy < RequiredEnergy` (with 20% typo headroom) | `ErrOutOfDomain` | **~29 μs** (MLP forward) |
 | **Layer 2** (Neural Output) | Shannon entropy | `Entropy > MaxEntropy` (default: 2.0) | `ErrHighEntropy` | **~29 μs** (MLP forward) |
 | **Layer 2** (Neural Output) | Primary confidence | `Confidence < LowThreshold` (default: 0.40) | `ErrLowConfidence` | **~29 μs** (MLP forward) |
 | **Layer 2** (Neural Output) | Top-1/Top-2 margin gap | `Margin < MarginCutoff` (default: 0.15) | `ErrAmbiguousIntent` | **~29 μs** (MLP forward) |
@@ -771,6 +774,48 @@ For a complete, turnkey reference implementation, explore **[github.com/gluedays
 - **`data/train.csv`**: 30-sample curated dataset covering `Refund`, `Delivery`, `Account`, and `Billing`.
 - **`main.go`**: Live 7-step benchmark execution suite demonstrating BPE training, native control flow (`switch`/`if`), comma-ok idioms, fluent DSL with HITL interactive confirmations, multi-metric inspection, and atomic hot-swapping.
 - **`main_test.go`**: Deterministic test suite verifying microsecond routing integrity.
+
+---
+
+### 3.20. Functional Options & Configuration: `WithEnergyThreshold`, `TrainAIWithOptions`
+
+To accommodate production DevOps environments with varying risk profiles (e.g., ultra-strict FinTech vs flexible conversational chatbots), NeuroBranch externalizes threshold overrides via idiomatic Go Functional Options:
+
+#### 1. Available Functional Options
+- `neurobranch.WithEnergyThreshold(cutoff float64)`: Overrides the minimum LogSumExp Free Energy threshold for strict OOD rejection.
+- `neurobranch.WithConfidenceThreshold(high float64, low ...float64)`: Sets the primary execution and fallback cutoff thresholds.
+- `neurobranch.WithMarginCutoff(margin float64)`: Enforces minimum Top-1 vs Top-2 probability gap.
+- `neurobranch.WithMaxEntropy(entropy float64)`: Configures Shannon prediction entropy boundary.
+- `neurobranch.WithPolicy(policy DispatchPolicy)`: Injects a custom 3-tier policy struct directly.
+
+#### 2. One-Shot Compilation with Options
+```go
+ai, err := neurobranch.TrainAIWithOptions(
+    samples,
+    cfg,
+    neurobranch.WithEnergyThreshold(3.0),
+    neurobranch.WithConfidenceThreshold(0.75, 0.40),
+    neurobranch.WithMarginCutoff(0.15),
+)
+```
+
+#### 3. 0-Alloc Runtime Policy Reconfiguration
+Inference thresholds can be tuned dynamically on live production instances without server restarts or memory allocations:
+```go
+// Adjust energy boundary on the fly with 21.14 ns latency (0 B/op, 0 allocs)
+ai.SetEnergyThreshold(3.2)
+```
+
+---
+
+### 3.21. In-Tree Enterprise Showcase & Benchmark Suite: `examples/enterprise_router`
+
+NeuroBranch incorporates an official in-tree showcase and regression test suite directly within the repository:
+1. **`examples/enterprise_router/`**: Standalone executable showcase with embedded dataset demonstrating all 7 production stages.
+2. **`pkg/neurobranch/benchmark_test.go`**: Pure Go benchmark suite executing parallel throughput and 0-alloc validations:
+   - `BenchmarkRoutingThroughput`: 125,300 ops/sec (~7.98 μs parallel latency across 12 threads).
+   - `BenchmarkOptionConfiguration`: 28,880,587 ops/sec (21.14 ns, 0 allocs).
+   - `BenchmarkPredictTokens`: 33,126 ops/sec (30.18 μs, 0 allocs).
 
 ---
 

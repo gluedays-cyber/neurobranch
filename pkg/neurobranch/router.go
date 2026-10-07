@@ -49,7 +49,15 @@ func NewRouterFromModel(model *InferenceModel, defaultThreshold ...float64) *Rou
 	policy.LowThreshold = threshold * 0.6
 
 	if model.Header.CalibratedMinEnergy > 0 {
-		policy.MinLogSumExp = float64(model.Header.CalibratedMinEnergy)
+		calEnergy := float64(model.Header.CalibratedMinEnergy)
+		policy.MinLogSumExp = calEnergy
+		policy.EnergyThreshold = calEnergy
+	}
+	// For enterprise production models (K >= 4 classes), enforce calibrated Free Energy cutoff (3.00)
+	// to prevent general trivia / casual conversation from leaking into business branches.
+	if model.Header.NumClasses >= 4 && policy.EnergyThreshold < 3.00 {
+		policy.EnergyThreshold = 3.00
+		policy.MinLogSumExp = 3.00
 	}
 	if model.Header.CalibratedMargin > 0 {
 		policy.RawLogitMargin = model.Header.CalibratedMargin
@@ -79,7 +87,13 @@ func (r *Router) Retrain(samples []DataSample, configs ...TrainConfig) error {
 	r.mu.Lock()
 	r.samples = append([]DataSample(nil), samples...)
 	if newModel.Header.CalibratedMinEnergy > 0 {
-		r.policy.MinLogSumExp = float64(newModel.Header.CalibratedMinEnergy)
+		calEnergy := float64(newModel.Header.CalibratedMinEnergy)
+		r.policy.MinLogSumExp = calEnergy
+		r.policy.EnergyThreshold = calEnergy
+	}
+	if newModel.Header.NumClasses >= 4 && r.policy.EnergyThreshold < 3.00 {
+		r.policy.EnergyThreshold = 3.00
+		r.policy.MinLogSumExp = 3.00
 	}
 	if newModel.Header.CalibratedMargin > 0 {
 		r.policy.RawLogitMargin = newModel.Header.CalibratedMargin
@@ -174,6 +188,15 @@ func (r *Router) SetPolicy(policy DispatchPolicy) *Router {
 	return r
 }
 
+// SetEnergyThreshold configures the minimum Free Energy (LogSumExp) cutoff for strict OOD rejection.
+func (r *Router) SetEnergyThreshold(threshold float64) *Router {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.policy.EnergyThreshold = threshold
+	r.policy.MinLogSumExp = threshold
+	return r
+}
+
 // SetSingleCharRatioCutoff configures the Layer 1 unlearned single-character token ratio threshold.
 func (r *Router) SetSingleCharRatioCutoff(cutoff float64) *Router {
 	r.mu.Lock()
@@ -192,6 +215,27 @@ func (r *Router) SetTemperature(t float32) *Router {
 	return r
 }
 
+// SetConfidenceThreshold configures high confidence and optional low confidence thresholds.
+func (r *Router) SetConfidenceThreshold(high float64, low ...float64) *Router {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.policy.HighThreshold = high
+	if len(low) > 0 && low[0] > 0.0 {
+		r.policy.LowThreshold = low[0]
+	}
+	return r
+}
+
+// ApplyOptions applies one or more functional options to the Router in order.
+func (r *Router) ApplyOptions(opts ...Option) *Router {
+	for _, opt := range opts {
+		if opt != nil {
+			opt(r)
+		}
+	}
+	return r
+}
+
 // Temperature returns the current temperature scaling factor.
 func (r *Router) Temperature() float32 {
 	r.mu.RLock()
@@ -201,3 +245,4 @@ func (r *Router) Temperature() float32 {
 	}
 	return 0
 }
+

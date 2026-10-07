@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"strings"
@@ -36,6 +36,11 @@ func NewBPETokenizer(vocab []string, rules []MergeRule) *BPETokenizer {
 
 // TrainBPE learns a BPE vocabulary and merge rules from a raw text corpus.
 func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
+	return TrainBPEWithBaseVocab(corpus, targetVocabSize, nil)
+}
+
+// TrainBPEWithBaseVocab learns a BPE vocabulary with base vocabulary support to eliminate UNKs and prevent fragmentation.
+func TrainBPEWithBaseVocab(corpus []string, targetVocabSize int, baseVocab []string) (*BPETokenizer, error) {
 	if targetVocabSize < 10 {
 		targetVocabSize = 10
 	}
@@ -50,13 +55,11 @@ func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
 		vocab = append(vocab, st)
 	}
 
-	// 1. Collect initial unique characters
-	charCounts := make(map[string]int)
+	// 1. Collect initial unique characters from corpus
 	for _, text := range corpus {
 		text = strings.TrimSpace(strings.ToLower(text))
 		for _, r := range text {
 			ch := string(r)
-			charCounts[ch]++
 			if _, exists := vocabMap[ch]; !exists {
 				vocabMap[ch] = uint32(len(vocab))
 				vocab = append(vocab, ch)
@@ -64,7 +67,20 @@ func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
 		}
 	}
 
-	// 2. Tokenize corpus into character token ID sequences
+	// 2. Add base English alphabet characters (a-z, space) only if baseVocab is enabled
+	// This guarantees zero UNKs when base vocab is activated while preserving exact small-corpus dynamics
+	if len(baseVocab) > 0 {
+		baseAlphabet := "abcdefghijklmnopqrstuvwxyz "
+		for _, r := range baseAlphabet {
+			ch := string(r)
+			if _, exists := vocabMap[ch]; !exists {
+				vocabMap[ch] = uint32(len(vocab))
+				vocab = append(vocab, ch)
+			}
+		}
+	}
+
+	// 3. Tokenize corpus into character token ID sequences
 	var tokenizedCorpus [][]uint32
 	for _, text := range corpus {
 		text = strings.TrimSpace(strings.ToLower(text))
@@ -74,15 +90,30 @@ func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
 		var seq []uint32
 		for _, r := range text {
 			ch := string(r)
-			seq = append(seq, vocabMap[ch])
+			if id, exists := vocabMap[ch]; exists {
+				seq = append(seq, id)
+			}
 		}
-		tokenizedCorpus = append(tokenizedCorpus, seq)
+		if len(seq) > 0 {
+			tokenizedCorpus = append(tokenizedCorpus, seq)
+		}
 	}
 
 	var mergeRules []MergeRule
 	ruleLookup := make(map[uint64]uint32)
 
-	// 3. Iteratively merge most frequent adjacent pairs
+	// Build lookup for base vocabulary if provided
+	baseVocabSet := make(map[string]bool)
+	if len(baseVocab) > 0 {
+		for _, w := range baseVocab {
+			w = strings.TrimSpace(strings.ToLower(w))
+			if len(w) > 1 {
+				baseVocabSet[w] = true
+			}
+		}
+	}
+
+	// 4. Iteratively learn adjacent pair merges deterministically
 	for len(vocab) < targetVocabSize {
 		pairCounts := make(map[uint64]int)
 		for _, seq := range tokenizedCorpus {
@@ -91,7 +122,6 @@ func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
 				pairCounts[key]++
 			}
 		}
-
 		if len(pairCounts) == 0 {
 			break
 		}
@@ -99,23 +129,29 @@ func TrainBPE(corpus []string, targetVocabSize int) (*BPETokenizer, error) {
 		var bestKey uint64
 		var maxFreq int
 		for key, freq := range pairCounts {
-			if freq > maxFreq || (freq == maxFreq && (bestKey == 0 || key < bestKey)) {
-				maxFreq = freq
+			score := freq
+			if len(baseVocabSet) > 0 {
+				t1 := uint32(key >> 32)
+				t2 := uint32(key & 0xFFFFFFFF)
+				candStr := vocab[t1] + vocab[t2]
+				if baseVocabSet[candStr] {
+					score += 50
+				}
+			}
+
+			if score > maxFreq || (score == maxFreq && (bestKey == 0 || key < bestKey)) {
+				maxFreq = score
 				bestKey = key
 			}
 		}
 
-		// Minimum frequency threshold to justify merge
 		if maxFreq < 2 && len(vocab) >= targetVocabSize/2 {
 			break
 		}
 
 		t1 := uint32(bestKey >> 32)
 		t2 := uint32(bestKey & 0xFFFFFFFF)
-
-		str1 := vocab[t1]
-		str2 := vocab[t2]
-		mergedStr := str1 + str2
+		mergedStr := vocab[t1] + vocab[t2]
 
 		newID := uint32(len(vocab))
 		vocabMap[mergedStr] = newID
@@ -176,8 +212,6 @@ func (t *BPETokenizer) Encode(text string) []uint32 {
 			tokens = append(tokens, 0)
 		}
 	}
-
-
 
 	if len(tokens) <= 1 {
 		return tokens
@@ -326,5 +360,3 @@ func ScanUnlearnedPatterns(text string) bool {
 	}
 	return false
 }
-
-

@@ -8,7 +8,8 @@ bin/
 dist/
 
 # Compiled Model Weights
-weights/*.bin
+**/weights/*.bin
+*.bin
 
 # Test binaries & coverage
 *.test

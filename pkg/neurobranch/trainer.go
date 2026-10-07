@@ -24,6 +24,9 @@ type TrainConfig struct {
 	BatchSize       int
 	Patience        int
 	Seed            int64
+	UseBaseVocab    bool     // Pre-load general base vocabulary to avoid fragmentation and UNKs (default: true)
+	CustomBaseVocab []string // Optional custom base vocabulary
+	AutoBalance     bool     // Automatically rebalance class weights and oversample minority classes (default: true)
 }
 
 // DefaultTrainConfig provides production-ready default hyperparameters.
@@ -41,6 +44,8 @@ func DefaultTrainConfig() TrainConfig {
 		BatchSize:       32,
 		Patience:        5,
 		Seed:            42,
+		UseBaseVocab:    false,
+		AutoBalance:     true,
 	}
 }
 
@@ -163,23 +168,28 @@ func TrainModel(samples []DataSample, cfg TrainConfig) (*InferenceModel, error) 
 		return nil, fmt.Errorf("dataset must contain at least 2 distinct classes, found %d", numClasses)
 	}
 
-	// 2. Train Pure Go BPE Tokenizer
+	// 2. Train Pure Go BPE Tokenizer with Base Vocabulary support
 	corpus := make([]string, len(samples))
 	for i, s := range samples {
 		corpus[i] = s.Text
 	}
-	tokenizer, err := TrainBPE(corpus, cfg.TargetVocabSize)
+	baseVocab := cfg.CustomBaseVocab
+	if len(baseVocab) == 0 && cfg.UseBaseVocab {
+		baseVocab = DefaultBaseVocab()
+	}
+	tokenizer, err := TrainBPEWithBaseVocab(corpus, cfg.TargetVocabSize, baseVocab)
 	if err != nil {
 		return nil, fmt.Errorf("failed to train BPE: %w", err)
 	}
 	vocabSize := tokenizer.VocabSize()
 
-	// 3. Prepare Encoded Dataset
+	// 3. Prepare Encoded Dataset & Class Imbalance Analysis
 	type EncodedSample struct {
 		tokens  []uint32
 		classID uint32
 	}
 	classBuckets := make(map[uint32][]EncodedSample)
+	classCounts := make([]int, numClasses)
 	for _, s := range samples {
 		tokens := tokenizer.Encode(s.Text)
 		if len(tokens) == 0 {
@@ -190,28 +200,54 @@ func TrainModel(samples []DataSample, cfg TrainConfig) (*InferenceModel, error) 
 			tokens:  tokens,
 			classID: cID,
 		})
+		classCounts[cID]++
+	}
+
+	maxClassCount := 0
+	for _, count := range classCounts {
+		if count > maxClassCount {
+			maxClassCount = count
+		}
 	}
 
 	var trainSet []EncodedSample
 	var valSet []EncodedSample
 
-	// Stratified split: ensure every class has representation in both train and validation
+	// Stratified split & In-memory minority oversampling
 	for cID := uint32(0); cID < uint32(numClasses); cID++ {
 		b := classBuckets[cID]
 		rng.Shuffle(len(b), func(i, j int) {
 			b[i], b[j] = b[j], b[i]
 		})
+
+		var classTrain []EncodedSample
 		if len(b) <= 2 {
 			// Very small class: keep in train, evaluate on same for sanity
-			trainSet = append(trainSet, b...)
+			classTrain = append(classTrain, b...)
 			valSet = append(valSet, b...)
 		} else {
 			valCnt := int(float64(len(b)) * 0.15)
 			if valCnt < 1 {
 				valCnt = 1
 			}
-			trainSet = append(trainSet, b[valCnt:]...)
+			classTrain = append(classTrain, b[valCnt:]...)
 			valSet = append(valSet, b[:valCnt]...)
+		}
+
+		if cfg.AutoBalance && len(classTrain) > 0 && maxClassCount >= 2*len(classTrain) {
+			targetCount := maxClassCount
+			replicated := make([]EncodedSample, 0, targetCount)
+			for len(replicated) < targetCount {
+				for _, smp := range classTrain {
+					replicated = append(replicated, smp)
+					if len(replicated) >= targetCount {
+						break
+					}
+				}
+			}
+			trainSet = append(trainSet, replicated...)
+		} else {
+			trainSet = append(trainSet, classTrain...)
 		}
 	}
 

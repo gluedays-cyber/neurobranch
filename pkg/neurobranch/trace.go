@@ -71,4 +71,3 @@ type BranchTrace struct {
 
 // GateTrace is an alias for BranchTrace for backward compatibility.
 type GateTrace = BranchTrace
-

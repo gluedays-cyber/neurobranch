@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"crypto/sha256"

@@ -109,6 +109,32 @@ func TrainFromMap(data map[string][]string, configs ...TrainConfig) (*Router, er
 	return TrainInMemory(samples, configs...)
 }
 
+// TrainWithOptions compiles an in-memory Router with initial training config and functional options applied.
+func TrainWithOptions(samples []DataSample, cfg TrainConfig, opts ...Option) (*Router, error) {
+	router, err := TrainInMemory(samples, cfg)
+	if err != nil {
+		return nil, err
+	}
+	router.ApplyOptions(opts...)
+	return router, nil
+}
+
+// TrainAIWithOptions is an alias for TrainWithOptions for domain AI compilation.
+var TrainAIWithOptions = TrainWithOptions
+
+// OpenWithOptions loads a binary model and applies functional options.
+func OpenWithOptions(modelPath string, opts ...Option) (*Router, error) {
+	router, err := Open(modelPath)
+	if err != nil {
+		return nil, err
+	}
+	router.ApplyOptions(opts...)
+	return router, nil
+}
+
+// OpenAIWithOptions is an alias for OpenWithOptions.
+var OpenAIWithOptions = OpenWithOptions
+
 // TrainAI is an alias for TrainInMemory, emphasizing that a domain artificial intelligence engine is compiled.
 var TrainAI = TrainInMemory
 

@@ -25,22 +25,23 @@ type (
 	CaseClause          = core.CaseClause
 	IntentHandler       = core.IntentHandler
 	ConfirmationHandler = core.ConfirmationHandler
+	Option              = core.Option
 )
 
 // Sentinel Errors
 var (
-	ErrModelNotInitialized = core.ErrModelNotInitialized
+	ErrModelNotInitialized  = core.ErrModelNotInitialized
 	ErrClassIndexOutOfRange = core.ErrClassIndexOutOfRange
-	ErrUnlearnedVocabulary = core.ErrUnlearnedVocabulary
-	ErrUnlearnedPattern    = core.ErrUnlearnedPattern
-	ErrDegeneratedInput    = core.ErrDegeneratedInput
-	ErrCorruptedTensor     = core.ErrCorruptedTensor
-	ErrLowConfidence       = core.ErrLowConfidence
-	ErrHighEntropy         = core.ErrHighEntropy
-	ErrOutOfDomain         = core.ErrOutOfDomain
-	ErrAmbiguousIntent     = core.ErrAmbiguousIntent
-	ErrUnhandledIntent     = core.ErrUnhandledIntent
-	ErrConfirmationReq     = core.ErrConfirmationReq
+	ErrUnlearnedVocabulary  = core.ErrUnlearnedVocabulary
+	ErrUnlearnedPattern     = core.ErrUnlearnedPattern
+	ErrDegeneratedInput     = core.ErrDegeneratedInput
+	ErrCorruptedTensor      = core.ErrCorruptedTensor
+	ErrLowConfidence        = core.ErrLowConfidence
+	ErrHighEntropy          = core.ErrHighEntropy
+	ErrOutOfDomain          = core.ErrOutOfDomain
+	ErrAmbiguousIntent      = core.ErrAmbiguousIntent
+	ErrUnhandledIntent      = core.ErrUnhandledIntent
+	ErrConfirmationReq      = core.ErrConfirmationReq
 )
 
 // High-level functions exported at the package root
@@ -51,15 +52,30 @@ var (
 	TrainAIFromMap     = core.TrainAIFromMap
 	TrainInMemory      = core.TrainInMemory
 	TrainFromMap       = core.TrainFromMap
+	TrainWithOptions   = core.TrainWithOptions
+	TrainAIWithOptions = core.TrainAIWithOptions
 	EnsureModel        = core.EnsureModel
 	Open               = core.Open
 	OpenAI             = core.OpenAI
+	OpenWithOptions     = core.OpenWithOptions
+	OpenAIWithOptions   = core.OpenAIWithOptions
 	OpenOrTrain        = core.OpenOrTrain
 
+	// Functional Options for Configuration Overrides
+	WithPolicy              = core.WithPolicy
+	WithEnergyThreshold     = core.WithEnergyThreshold
+	WithConfidenceThreshold = core.WithConfidenceThreshold
+	WithMarginCutoff        = core.WithMarginCutoff
+	WithMaxEntropy          = core.WithMaxEntropy
+	WithPipelineThreshold   = core.WithPipelineThreshold
+	WithPatternGuard        = core.WithPatternGuard
+
 	// Core Training & Dataset Helpers
-	DefaultTrainConfig = core.DefaultTrainConfig
-	LoadCSVDataset     = core.LoadCSVDataset
-	TrainModel         = core.TrainModel
+	DefaultTrainConfig    = core.DefaultTrainConfig
+	LoadCSVDataset        = core.LoadCSVDataset
+	TrainModel            = core.TrainModel
+	DefaultBaseVocab      = core.DefaultBaseVocab
+	TrainBPEWithBaseVocab = core.TrainBPEWithBaseVocab
 
 	// Binary Serialization
 	SaveBinaryModel = core.SaveBinaryModel
@@ -79,4 +95,3 @@ var (
 	CalculateUniqueTokenRatio = core.CalculateUniqueTokenRatio
 	ScanUnlearnedPatterns     = core.ScanUnlearnedPatterns
 )
-

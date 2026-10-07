@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"context"
@@ -109,7 +109,7 @@ func (sb *SwitchBuilder) Evaluate(ctx ...context.Context) error {
 		// Borderline / Ambiguous intent check
 		if errors.Is(err, ErrAmbiguousIntent) || errors.Is(err, ErrLowConfidence) {
 			if clause, exists := sb.cases[decision.Intent]; exists {
-				if clause.confirmMsg != "" {
+				if clause.confirmFn != nil || clause.confirmMsg != "" {
 					if clause.confirmFn != nil {
 						return clause.confirmFn(evalCtx, clause.confirmMsg)
 					}
@@ -137,11 +137,22 @@ func (sb *SwitchBuilder) Evaluate(ctx ...context.Context) error {
 		if clause.autoFn != nil {
 			return clause.autoFn(evalCtx)
 		}
-		return nil
+		// If Auto handler is omitted but Confirm is declared, invoke confirmation
+		if clause.confirmFn != nil || clause.confirmMsg != "" {
+			if clause.confirmFn != nil {
+				return clause.confirmFn(evalCtx, clause.confirmMsg)
+			}
+			return fmt.Errorf("%w: %s", ErrConfirmationReq, clause.confirmMsg)
+		}
+		// If neither handler is defined, fall back to Default
+		if sb.fallbackFn != nil {
+			return sb.fallbackFn(evalCtx)
+		}
+		return ErrUnhandledIntent
 	}
 
-	// 2. Ambiguous Confirmation Branch
-	if clause.confirmMsg != "" {
+	// 2. Ambiguous / Threshold-unmet Confirmation Branch
+	if clause.confirmFn != nil || clause.confirmMsg != "" {
 		if clause.confirmFn != nil {
 			return clause.confirmFn(evalCtx, clause.confirmMsg)
 		}

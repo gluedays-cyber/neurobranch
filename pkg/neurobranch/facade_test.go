@@ -47,7 +47,6 @@ cannot login to account,Account
 		t.Log("Note: refund branch did not trigger, model may need more epochs")
 	}
 
-
 	// 4. OpenOrTrain with a fresh path
 	freshModelPath := filepath.Join(tempDir, "weights", "fresh.bin")
 	freshRouter, err := OpenOrTrain(csvPath, freshModelPath, 0.50)

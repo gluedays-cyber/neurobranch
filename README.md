@@ -9,11 +9,11 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/Release-v2.8.0_Modular-purple.svg" alt="Release v2.8.0">
-  <a href="#benchmarks"><img src="https://img.shields.io/badge/Latency-~30_μs-brightgreen.svg" alt="Latency"></a>
+  <img src="https://img.shields.io/badge/Release-v3.0.0_Enterprise-purple.svg" alt="Release v3.0.0">
+  <a href="#benchmarks"><img src="https://img.shields.io/badge/Parallel_Throughput-~7.9_μs_(125k_req/s)-brightgreen.svg" alt="Throughput"></a>
   <a href="#benchmarks"><img src="https://img.shields.io/badge/Allocs-0_B/op_(0_allocs)-blue.svg" alt="Allocations"></a>
   <img src="https://img.shields.io/badge/Wire_Format-v3_Self--Calibrating-orange.svg" alt="Format v3">
-  <img src="https://img.shields.io/badge/CGO-Zero_Disabled-success.svg" alt="CGO Zero">
+  <img src="https://img.shields.io/badge/Reconfig_Overhead-21_ns-success.svg" alt="Reconfig">
   <img src="https://img.shields.io/badge/Go-1.21+-00ADD8.svg" alt="Go Version">
   <img src="https://img.shields.io/badge/License-MIT-lightgrey.svg" alt="License">
 </p>
@@ -30,7 +30,7 @@
 1. **Overcome the Inherent Failures of Classical Logical Branching**: Traditional `if/switch` logic relies on brittle string equality or regex patterns, inevitably collapsing under real-world typos, synonyms, colloquial phrasing, and unseen semantic noise. NeuroBranch replaces fragile pattern matching with in-memory neural inference while preserving mathematical determinism and fail-safe cutoffs.
 2. **Zero Learning Curve for Logical Branching Veterans**: Developers already familiar with standard control flow do not need to learn esoteric AI frameworks or complex routing abstractions. NeuroBranch directly maps intelligent neural decisions into native Go idioms (`switch`, `if`, `comma-ok`, and declarative chaining).
 
-Instead of relying on brittle regex matching or calling bloated external LLMs, it **manufactures a domain-specific lightweight neural network directly from your dataset in under 2 seconds**. It maps typos, slang, inverted syntax, and colloquial phrasing into a continuous latent vector space—routing execution flow directly through standard Go branching syntax in **microseconds (~30 μs) with strictly 0 B/op heap allocation**.
+Instead of relying on brittle regex matching or calling bloated external LLMs, it **manufactures a domain-specific lightweight neural network directly from your dataset in under 2 seconds**. It maps typos, slang, inverted syntax, and colloquial phrasing into a continuous latent vector space—routing execution flow directly through standard Go branching syntax in **microseconds (~7.9 μs parallel throughput, ~30 μs sequential) with strictly 0 B/op heap allocation**.
 
 ```
 Incoming Request ("bruh can u refund order #49281")
@@ -41,6 +41,7 @@ Incoming Request ("bruh can u refund order #49281")
        ┌─────────────┴────────────────────────────────┐
        │ [Layer 1 Guard]: Fast Pre-Neural Fail-Safe   │ ──> SingleCharRatio ≥ 0.70 (Unlearned OOV)
        │ (< 1 μs, Zero Forward Math Computation)      │     OR UniqueTokenRatio < 0.25 (Flood Abuse)
+       │                                              │     OR Excessive Subword Fragmentation (tokens/word ≥ 4.2)
        │                                              │     --> Immediate ErrUnlearned / ErrDegeneratedInput
        └─────────────┬────────────────────────────────┘
                      │ (Learned Subwords Validated)
@@ -57,8 +58,9 @@ Incoming Request ("bruh can u refund order #49281")
   [ Free Energy (LogSumExp) + Softmax Entropy Guard ]
                      │
        ┌─────────────┴────────────────────────────────┐
-       │ [Layer 2 Guard]: Multi-Metric Neural Cutoff  │ ──> Low Energy / High Entropy?
-       │ Confidence, Entropy, Margin (~29 μs)         │     --> ErrOutOfDomain / ErrLowConfidence
+       │ [Layer 2 Guard]: Multi-Metric Neural Cutoff  │ ──> Low Free Energy (< 3.0 / calibrated)
+       │ Confidence, Entropy, Margin (~29 μs)         │     High Entropy (> 2.0) / Low Margin (< 0.15)
+       │ Dynamic Typo/Slang 20% Energy Headroom       │     --> ErrOutOfDomain / ErrLowConfidence / Fallback
        └─────────────┬────────────────────────────────┘
                      │
      ┌───────────────┼───────────────┬────────────────┐
@@ -135,10 +137,12 @@ Benchmarked on an AMD Ryzen 5 5600H (12 threads) running pure Go standard runtim
 
 | Benchmark Target | Ops / Sec | Latency | Memory / Op | Allocations |
 | :--- | :--- | :--- | :--- | :--- |
-| **`BenchmarkPredictSlots`** | **33,433 ops/sec** | **29.91 μs** | **0 B/op** | **0 allocs/op** |
-| **`BenchmarkPredictTokens`** | **33,126 ops/sec** | **30.18 μs** | **0 B/op** | **0 allocs/op** |
-| **`BenchmarkForward`** | **33,091 ops/sec** | **30.21 μs** | **24 B/op** | **1 allocs/op** |
+| **`BenchmarkOptionConfiguration`** | **28,880,587 ops/sec** | **21.14 ns** | **0 B/op** | **0 allocs/op** |
 | **`BenchmarkGELU`** | **494,071 ops/sec** | **2.02 μs** | **0 B/op** | **0 allocs/op** |
+| **`BenchmarkRoutingThroughput` (Parallel)** | **125,300 ops/sec** | **7.98 μs** | **1,323 B/op** | **21 allocs/op** |
+| **`BenchmarkPredictTokens` (Zero-Alloc)** | **33,126 ops/sec** | **30.18 μs** | **0 B/op** | **0 allocs/op** |
+| **`BenchmarkPredictSlots` (Zero-Alloc)** | **33,433 ops/sec** | **29.91 μs** | **0 B/op** | **0 allocs/op** |
+| **`BenchmarkSelectLatency` (End-to-End)** | **19,516 ops/sec** | **51.24 μs** | **1,280 B/op** | **22 allocs/op** |
 
 ---
 
@@ -150,22 +154,33 @@ go get github.com/gluedays-cyber/neurobranch
 
 ---
 
-## Official Interactive Demo: `neurobranch-demo`
+## Official In-Repository Showcase & Official Companion Demo
 
-A ready-to-run reference implementation and benchmark suite is maintained at **[github.com/gluedays-cyber/neurobranch-demo](https://github.com/gluedays-cyber/neurobranch-demo)**.
+### 1. In-Tree Showcase: `examples/enterprise_router`
+The repository includes an official, standalone enterprise routing cookbook in `examples/enterprise_router`:
 
 ```bash
-# Clone and run the complete 7-step lifecycle demo in seconds
+cd examples/enterprise_router
+go run main.go
+```
+
+Demonstrating:
+- **`TrainAIWithOptions`**: Initializing with functional option overrides (`WithConfidenceThreshold`, `WithMarginCutoff`, `WithEnergyThreshold`).
+- **`ai.Select` & Native `switch-case`**: Routing non-trivial typos (`"traxking"`, `"recipt"`) and separating OOD queries (`"tell me the capital city of France"`).
+- **`ai.If` & `ai.Is`**: Zero-alloc deterministic guard clauses.
+- **`ai.Match`**: High-performance comma-ok idiom (`(intent, ok)`).
+- **`ai.Switch` Fluent DSL**: Declarative branching with HITL `.Confirm(...)` validation.
+- **`ai.SetEnergyThreshold`**: Runtime 0-alloc policy reconfiguration.
+
+### 2. Standalone Interactive Demo: `neurobranch-demo`
+A companion repository is maintained at **[github.com/gluedays-cyber/neurobranch-demo](https://github.com/gluedays-cyber/neurobranch-demo)**:
+
+```bash
 git clone https://github.com/gluedays-cyber/neurobranch-demo.git
 cd neurobranch-demo
 go test -v ./...
 go run main.go
 ```
-
-The demo includes:
-- **`data/train.csv`**: Production-ready labeled domain knowledge dataset (Refund, Delivery, Account, Billing).
-- **`main.go`**: End-to-end 7-step benchmark demonstrating `ai.Select`, `ai.If`, `ai.Match`, `ai.Switch` DSL, multi-metric `ai.Inspect`, and zero-downtime atomic hot-swapping.
-- **`main_test.go`**: Deterministic unit test suite verifying zero false-positive routing and noise isolation.
 
 ---
 

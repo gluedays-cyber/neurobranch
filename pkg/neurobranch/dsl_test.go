@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"context"
@@ -99,15 +99,15 @@ func TestDeclarativeSwitchBuilder(t *testing.T) {
 	var executedBranch string
 	err := router.Switch("where is my package shipment").
 		Case("Refund").
-			Auto(func(ctx context.Context) error {
-				executedBranch = "Refund"
-				return nil
-			}).
+		Auto(func(ctx context.Context) error {
+			executedBranch = "Refund"
+			return nil
+		}).
 		Case("Delivery").
-			Auto(func(ctx context.Context) error {
-				executedBranch = "Delivery"
-				return nil
-			}).
+		Auto(func(ctx context.Context) error {
+			executedBranch = "Delivery"
+			return nil
+		}).
 		Default(func(ctx context.Context) error {
 			executedBranch = "Default"
 			return nil
@@ -125,10 +125,10 @@ func TestDeclarativeSwitchBuilder(t *testing.T) {
 	executedBranch = ""
 	err = router.Switch("alien spacecraft propulsion mechanics").
 		Case("Refund").
-			Auto(func(ctx context.Context) error {
-				executedBranch = "Refund"
-				return nil
-			}).
+		Auto(func(ctx context.Context) error {
+			executedBranch = "Refund"
+			return nil
+		}).
 		Default(func(ctx context.Context) error {
 			executedBranch = "Default"
 			return nil
@@ -146,14 +146,14 @@ func TestDeclarativeSwitchBuilder(t *testing.T) {
 	var confirmTriggered bool
 	err = router.Switch("refund my money please").
 		Case("Refund").
-			AtLeast(0.9999). // Intentionally unattainable threshold to force confirmation
-			Confirm("Would you like to refund?", func(ctx context.Context, prompt string) error {
-				confirmTriggered = true
-				if prompt != "Would you like to refund?" {
-					t.Errorf("unexpected prompt: %s", prompt)
-				}
-				return nil
-			}).
+		AtLeast(0.9999). // Intentionally unattainable threshold to force confirmation
+		Confirm("Would you like to refund?", func(ctx context.Context, prompt string) error {
+			confirmTriggered = true
+			if prompt != "Would you like to refund?" {
+				t.Errorf("unexpected prompt: %s", prompt)
+			}
+			return nil
+		}).
 		Evaluate(ctx)
 
 	if err != nil {

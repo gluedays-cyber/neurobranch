@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"bytes"
@@ -334,4 +334,3 @@ func TestDeserializeCorruptedTensor_NaN_Inf(t *testing.T) {
 		t.Fatalf("expected ErrCorruptedTensor, got: %v", errInf)
 	}
 }
-

@@ -1,4 +1,4 @@
-﻿package neurobranch
+package neurobranch
 
 import (
 	"errors"
@@ -288,4 +288,3 @@ func CosineSimilarity(a, b []float32) float32 {
 	}
 	return sim
 }
-

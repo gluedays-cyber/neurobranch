@@ -170,8 +170,11 @@ func (g *NeuroBranch) evaluateFast(text string) branchEvaluation {
 	}
 	logSumExp := float64(maxLogit) + math.Log(sumExp)
 
-	effectiveMinEnergy := g.policy.MinLogSumExp
-	if effectiveMinEnergy == 0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
+	effectiveMinEnergy := g.policy.EnergyThreshold
+	if effectiveMinEnergy <= 0.0 {
+		effectiveMinEnergy = g.policy.MinLogSumExp
+	}
+	if effectiveMinEnergy <= 0.0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
 		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
 	}
 
@@ -351,8 +354,11 @@ func (g *NeuroBranch) evaluateFastTokens(tokens []uint32) branchEvaluation {
 	}
 	logSumExp := float64(maxLogit) + math.Log(sumExp)
 
-	effectiveMinEnergy := g.policy.MinLogSumExp
-	if effectiveMinEnergy == 0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
+	effectiveMinEnergy := g.policy.EnergyThreshold
+	if effectiveMinEnergy <= 0.0 {
+		effectiveMinEnergy = g.policy.MinLogSumExp
+	}
+	if effectiveMinEnergy <= 0.0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
 		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
 	}
 

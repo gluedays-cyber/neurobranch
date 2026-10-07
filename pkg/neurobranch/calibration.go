@@ -179,6 +179,10 @@ func (g *NeuroBranch) CalibrateDomainDistribution(samples []DataSample, k float3
 		adaptiveEnergy := meanEnergy - (k * stdDevEnergy)
 		if adaptiveEnergy > 0 {
 			g.policy.MinLogSumExp = float64(adaptiveEnergy)
+			g.policy.EnergyThreshold = float64(adaptiveEnergy)
+		} else {
+			g.policy.MinLogSumExp = 0.0
+			g.policy.EnergyThreshold = 0.0
 		}
 	}
 
@@ -367,11 +371,21 @@ func CalibrateModelDistribution(model *InferenceModel, samples []DataSample, k .
 		stdDevEnergy := float32(math.Sqrt(float64(varianceEnergy)))
 		adaptiveEnergy = meanEnergy - (coeff * stdDevEnergy)
 
-		// Clamp with observed in-distribution minimum headroom so valid variations are not prematurely cut off
-		headroom := minObservedEnergy * 0.80
-		if headroom > 0 && adaptiveEnergy > headroom {
-			adaptiveEnergy = headroom
+		if n > 20 {
+			meanRatioEnergy := meanEnergy * 0.55
+			if meanRatioEnergy > 0 && adaptiveEnergy < meanRatioEnergy {
+				adaptiveEnergy = meanRatioEnergy
+			}
+		} else {
+			// For small sample sets (N <= 20), clamp with observed in-distribution minimum headroom
+			// so valid phrasing variations are not prematurely cut off
+			headroom := minObservedEnergy * 0.80
+			if headroom > 0 && adaptiveEnergy > headroom {
+				adaptiveEnergy = headroom
+			}
 		}
+
+		// Guard against negative energy
 		if adaptiveEnergy < 0 {
 			adaptiveEnergy = 0
 		}
@@ -465,10 +479,10 @@ func (r *Router) CalibrateDomainDistribution(samples []DataSample, k ...float32)
 	CalibrateModelDistribution(model, samples, k...)
 	if model.Header.CalibratedMinEnergy > 0 {
 		r.policy.MinLogSumExp = float64(model.Header.CalibratedMinEnergy)
+		r.policy.EnergyThreshold = float64(model.Header.CalibratedMinEnergy)
 	}
 	if model.Header.CalibratedMargin > 0 {
 		r.policy.RawLogitMargin = model.Header.CalibratedMargin
 	}
 	return r
 }
-

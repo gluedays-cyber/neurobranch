@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 	"unicode/utf8"
 )
@@ -77,6 +78,19 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 		}, ErrUnlearnedVocabulary
 	}
 
+	// Subword Fragmentation Ratio Guard (Tokens per word penalty for OOD text)
+	words := strings.Fields(text)
+	if len(words) >= 3 && len(tokenIDs) >= 16 && model != nil && model.Header.NumClasses >= 4 {
+		fragRatio := float64(len(tokenIDs)) / float64(len(words))
+		if (fragRatio >= 4.2 && singleRatio >= 0.45) || fragRatio >= 5.5 {
+			return RouteDecision{
+				SingleCharRatio:   singleRatio,
+				UnknownTokenRatio: unkRatio,
+				UniqueTokenRatio:  uniqueRatio,
+			}, ErrUnlearnedVocabulary
+		}
+	}
+
 	// -------------------------------------------------------------
 	// [Layer 2 Guard] Neural forward pass & metric-based cutoff (~29 μs)
 	// -------------------------------------------------------------
@@ -114,8 +128,8 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 		unkPenalty = (unkRatio - 0.25) * 1.5
 	}
 	singlePenalty := 0.0
-	if singleRatio > 0.5 {
-		singlePenalty = (singleRatio - 0.5) * 2.0
+	if singleRatio > 0.50 {
+		singlePenalty = (singleRatio - 0.50) * 2.0
 	}
 	effectivePenalty := math.Max(unkPenalty, singlePenalty)
 	if effectivePenalty > 1.0 {
@@ -140,8 +154,11 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 		SecondaryConfidence: calibratedSecond,
 	}
 
-	effectiveMinEnergy := r.policy.MinLogSumExp
-	if effectiveMinEnergy == 0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
+	effectiveMinEnergy := r.policy.EnergyThreshold
+	if effectiveMinEnergy <= 0.0 {
+		effectiveMinEnergy = r.policy.MinLogSumExp
+	}
+	if effectiveMinEnergy <= 0.0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
 		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
 	}
 	effectiveMargin := r.policy.RawLogitMargin
@@ -149,8 +166,21 @@ func (r *Router) RouteQuery(ctx context.Context, text string) (RouteDecision, er
 		effectiveMargin = model.Header.CalibratedMargin
 	}
 
+	// Dynamic Energy Quality & Typo Scaling:
+	// Fragmented unlearned inputs (SingleCharRatio > 0.45) suffer energy degradation,
+	// while decisive in-domain inputs (high confidence, low fragmentation) receive typo tolerance headroom.
+	adjustedEnergy := energy
+	if model != nil && model.Header.NumClasses >= 4 && singleRatio > 0.45 {
+		adjustedEnergy -= (singleRatio - 0.45) * 4.0
+	}
+
+	requiredEnergy := effectiveMinEnergy
+	if calibratedConfidence >= r.policy.HighThreshold && margin >= 0.50 && singleRatio <= 0.40 {
+		requiredEnergy *= 0.80 // 20% typo/slang tolerance for decisive in-domain predictions
+	}
+
 	// 1. Energy boundary (LogSumExp)
-	if effectiveMinEnergy != 0.0 && energy < effectiveMinEnergy {
+	if requiredEnergy > 0.0 && adjustedEnergy < requiredEnergy {
 		return decision, ErrOutOfDomain
 	}
 
@@ -260,8 +290,8 @@ func (r *Router) Inspect(text string) RouteTrace {
 
 	// Guard 3: Apply calibrated confidence penalty
 	effectivePenalty := unkRatio
-	if singleRatio > 0.5 {
-		effectivePenalty = math.Max(unkRatio, (singleRatio-0.5)*2.0)
+	if singleRatio > 0.50 {
+		effectivePenalty = math.Max(unkRatio, (singleRatio-0.50)*2.0)
 	}
 	calibratedConfidence := float64(bestScore) * (1.0 - effectivePenalty)
 	calibratedSecond := float64(secondScore) * (1.0 - effectivePenalty)
@@ -271,13 +301,25 @@ func (r *Router) Inspect(text string) RouteTrace {
 	slotRes, _ := model.PredictSlots(tokens, model.Temperature)
 	energy := float64(slotRes.Energy)
 
-	effectiveMinEnergy := r.policy.MinLogSumExp
-	if effectiveMinEnergy == 0 && model.Header.CalibratedMinEnergy > 0 {
+	effectiveMinEnergy := r.policy.EnergyThreshold
+	if effectiveMinEnergy <= 0.0 {
+		effectiveMinEnergy = r.policy.MinLogSumExp
+	}
+	if effectiveMinEnergy <= 0.0 && model.Header.CalibratedMinEnergy > 0 {
 		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
 	}
 	effectiveMargin := r.policy.RawLogitMargin
 	if effectiveMargin == 0 && model.Header.CalibratedMargin > 0 {
 		effectiveMargin = model.Header.CalibratedMargin
+	}
+
+	adjustedEnergy := energy
+	if model != nil && model.Header.NumClasses >= 4 && singleRatio > 0.45 {
+		adjustedEnergy -= (singleRatio - 0.45) * 4.0
+	}
+	requiredEnergy := effectiveMinEnergy
+	if calibratedConfidence >= r.policy.HighThreshold && margin >= 0.50 && singleRatio <= 0.40 {
+		requiredEnergy *= 0.80
 	}
 
 	trace := RouteTrace{
@@ -300,6 +342,12 @@ func (r *Router) Inspect(text string) RouteTrace {
 		LatencyMicros:      time.Since(start).Microseconds(),
 	}
 
+	words := strings.Fields(text)
+	var fragRatio float64
+	if len(words) > 0 {
+		fragRatio = float64(len(tokens)) / float64(len(words))
+	}
+
 	if err != nil {
 		trace.IsFallback = true
 		trace.FallbackReason = fmt.Sprintf("inference error: %v", err)
@@ -312,9 +360,12 @@ func (r *Router) Inspect(text string) RouteTrace {
 	} else if unkRatio >= 0.5 {
 		trace.IsFallback = true
 		trace.FallbackReason = fmt.Sprintf("excessive unknown tokens (%.2f >= 0.50)", unkRatio)
-	} else if effectiveMinEnergy != 0.0 && energy < effectiveMinEnergy {
+	} else if len(words) >= 3 && len(tokens) >= 16 && model != nil && model.Header.NumClasses >= 4 && ((fragRatio >= 4.2 && singleRatio >= 0.45) || fragRatio >= 5.5) {
 		trace.IsFallback = true
-		trace.FallbackReason = fmt.Sprintf("energy %.4f below minimum threshold %.4f (OOD)", energy, effectiveMinEnergy)
+		trace.FallbackReason = fmt.Sprintf("excessive subword fragmentation (%.2f tokens/word, singleRatio=%.2f)", fragRatio, singleRatio)
+	} else if requiredEnergy != 0.0 && adjustedEnergy < requiredEnergy {
+		trace.IsFallback = true
+		trace.FallbackReason = fmt.Sprintf("energy %.4f below minimum threshold %.4f (OOD)", adjustedEnergy, requiredEnergy)
 	} else if entropy > r.policy.MaxEntropy {
 		trace.IsFallback = true
 		trace.FallbackReason = fmt.Sprintf("prediction entropy %.4f exceeds limit %.4f (OOD)", entropy, r.policy.MaxEntropy)
@@ -350,21 +401,6 @@ func (r *Router) SelectCtx(ctx context.Context, text string) string {
 	if err != nil {
 		return ""
 	}
-
-	effectiveMinEnergy := r.policy.MinLogSumExp
-	model := r.model.Load()
-	if effectiveMinEnergy == 0 && model != nil && model.Header.CalibratedMinEnergy > 0 {
-		effectiveMinEnergy = float64(model.Header.CalibratedMinEnergy)
-	}
-
-	// Reinforce safety cutoffs: LogSumExp Free Energy and Shannon entropy
-	if effectiveMinEnergy > 0.0 && decision.Energy < effectiveMinEnergy {
-		return ""
-	}
-	if decision.Entropy > r.policy.MaxEntropy {
-		return ""
-	}
-
 	return decision.Intent
 }
 
@@ -443,4 +479,3 @@ func (r *Router) AssertCtx(ctx context.Context, text string, targetLabel string)
 	}
 	return nil
 }
-
